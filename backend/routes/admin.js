@@ -292,9 +292,9 @@ router.put('/users/:id/ban', async (req, res) => {
           email: user.email,
           reason: reason || 'Policy violation',
           date: new Date().toLocaleString(),
-          platformName: settings?.platformName || 'NalmiFX',
-          loginUrl: settings?.loginUrl || 'https://nalmifx.com/login',
-          supportEmail: settings?.supportEmail || 'support@nalmifx.com',
+          platformName: settings?.platformName || 'SetupFX',
+          loginUrl: settings?.loginUrl || 'https://SetupFX.com/login',
+          supportEmail: settings?.supportEmail || 'support@SetupFX.com',
           year: new Date().getFullYear().toString()
         })
       }

@@ -445,8 +445,8 @@ router.post('/forgot-password', async (req, res) => {
           email: user.email,
           otp,
           expiryMinutes,
-          platformName: 'NalmiFX',
-          supportEmail: emailSettings?.fromEmail || 'support@nalmifx.com',
+          platformName: 'SetupFX',
+          supportEmail: emailSettings?.fromEmail || 'support@SetupFX.com',
           year: new Date().getFullYear().toString()
         })
 

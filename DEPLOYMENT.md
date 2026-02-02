@@ -1,4 +1,4 @@
-# NalmiFX VPS Deployment Guide (Fresh OS Installation)
+# SetupFX VPS Deployment Guide (Fresh OS Installation)
 
 ## Step 1: First Login to VPS
 
@@ -11,13 +11,13 @@ ssh root@YOUR_VPS_IP
 
 ```bash
 # Create new user
-adduser nalmifx
+adduser SetupFX
 
 # Add user to sudo group
-usermod -aG sudo nalmifx
+usermod -aG sudo SetupFX
 
 # Switch to new user
-su - nalmifx
+su - SetupFX
 ```
 
 ## Step 3: Update System
@@ -91,24 +91,24 @@ sudo apt install git -y
 
 ### Option A: Using Git (Recommended)
 ```bash
-cd /home/nalmifx
-git clone YOUR_REPO_URL nalmi
+cd /home/SetupFX
+git clone YOUR_REPO_URL setup
 ```
 
 ### Option B: Using SCP (from your local machine)
 ```bash
 # Run this on your LOCAL machine, not VPS
-scp -r ./nalmi nalmifx@YOUR_VPS_IP:/home/nalmifx/
+scp -r ./setup SetupFX@YOUR_VPS_IP:/home/SetupFX/
 ```
 
 ### Option C: Using SFTP/FileZilla
 - Connect to VPS using FileZilla
-- Upload the `nalmi` folder to `/home/nalmifx/`
+- Upload the `setup` folder to `/home/SetupFX/`
 
 ## Step 9: Configure Backend
 
 ```bash
-cd /home/nalmifx/nalmi/backend
+cd /home/SetupFX/setup/backend
 
 # Install dependencies
 npm install
@@ -122,7 +122,7 @@ Edit `.env` with your production values:
 ```env
 PORT=5001
 NODE_ENV=production
-MONGODB_URI=mongodb://localhost:27017/nalmifx
+MONGODB_URI=mongodb://localhost:27017/SetupFX
 JWT_SECRET=your_secure_random_string_here
 CORS_ORIGIN=http://YOUR_VPS_IP:5173
 ```
@@ -130,7 +130,7 @@ CORS_ORIGIN=http://YOUR_VPS_IP:5173
 ## Step 10: Configure Frontend
 
 ```bash
-cd /home/nalmifx/nalmi/frontend
+cd /home/SetupFX/setup/frontend
 
 # Install dependencies
 npm install
@@ -148,17 +148,17 @@ VITE_API_URL=http://YOUR_VPS_IP:5001
 ## Step 11: Build Frontend
 
 ```bash
-cd /home/nalmifx/nalmi/frontend
+cd /home/SetupFX/setup/frontend
 npm run build
 ```
 
 ## Step 12: Start Backend with PM2
 
 ```bash
-cd /home/nalmifx/nalmi/backend
+cd /home/SetupFX/setup/backend
 
 # Start with PM2
-pm2 start server.js --name nalmifx-backend
+pm2 start server.js --name SetupFX-backend
 
 # Save PM2 configuration
 pm2 save
@@ -172,8 +172,8 @@ pm2 startup
 ### Option A: Using serve (Simple)
 ```bash
 npm install -g serve
-cd /home/nalmifx/nalmi/frontend
-pm2 start "serve -s dist -l 5173" --name nalmifx-frontend
+cd /home/SetupFX/setup/frontend
+pm2 start "serve -s dist -l 5173" --name SetupFX-frontend
 ```
 
 ### Option B: Using Nginx (Recommended for Production)
@@ -181,7 +181,7 @@ pm2 start "serve -s dist -l 5173" --name nalmifx-frontend
 sudo apt install nginx
 
 # Configure nginx
-sudo nano /etc/nginx/sites-available/nalmifx
+sudo nano /etc/nginx/sites-available/SetupFX
 ```
 
 Nginx configuration:
@@ -192,7 +192,7 @@ server {
     
     # Frontend
     location / {
-        root /home/nalmifx/nalmi/frontend/dist;
+        root /home/SetupFX/setup/frontend/dist;
         try_files $uri $uri/ /index.html;
     }
     
@@ -220,7 +220,7 @@ server {
 
 Enable the site:
 ```bash
-sudo ln -s /etc/nginx/sites-available/nalmifx /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/SetupFX /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl restart nginx
 ```
@@ -248,8 +248,8 @@ sudo ufw enable
 pm2 status              # Check status
 pm2 logs                # View logs
 pm2 restart all         # Restart all apps
-pm2 stop nalmifx-backend   # Stop backend
-pm2 delete nalmifx-backend # Remove from PM2
+pm2 stop SetupFX-backend   # Stop backend
+pm2 delete SetupFX-backend # Remove from PM2
 ```
 
 ## Troubleshooting
@@ -270,7 +270,7 @@ sudo systemctl start mongod
 
 ### View logs
 ```bash
-pm2 logs nalmifx-backend --lines 100
+pm2 logs SetupFX-backend --lines 100
 ```
 
 ## Adding Domain Later

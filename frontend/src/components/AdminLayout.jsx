@@ -25,7 +25,7 @@ import {
   Gift,
   Image
 } from 'lucide-react'
-import logoImage from '../assets/nalmifx.png'
+import logoImage from '../assets/SetupFX.png'
 
 const AdminLayout = ({ children, title, subtitle }) => {
   const navigate = useNavigate()
@@ -100,8 +100,8 @@ const AdminLayout = ({ children, title, subtitle }) => {
         {/* Logo */}
         <div className="p-4 flex items-center justify-between border-b border-gray-800">
           <div className="flex items-center gap-2">
-            <img src={logoImage} alt="NalmiFX" className="h-8 w-auto object-contain flex-shrink-0" />
-            {sidebarExpanded && <span className="text-white font-semibold">NalmiFX Admin</span>}
+            <img src={logoImage} alt="SetupFX" className="h-8 w-auto object-contain flex-shrink-0" />
+            {sidebarExpanded && <span className="text-white font-semibold">SetupFX Admin</span>}
           </div>
           <button 
             onClick={() => setSidebarExpanded(!sidebarExpanded)}
