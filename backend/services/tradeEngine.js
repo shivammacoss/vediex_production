@@ -295,6 +295,14 @@ class TradeEngine {
     }
     console.log(`Commission calculated: $${commission} (side=${side}, commissionOnBuy=${charges.commissionOnBuy}, commissionOnSell=${charges.commissionOnSell})`)
 
+    // Validate SL/TP values if provided
+    if (sl !== null || tp !== null) {
+      const slTpErrors = this.validateSlTp(side, openPrice, sl, tp)
+      if (slTpErrors.length > 0) {
+        throw new Error(slTpErrors.join('. '))
+      }
+    }
+
     // Generate trade ID
     const tradeId = await Trade.generateTradeId()
 
@@ -439,11 +447,42 @@ class TradeEngine {
     }
   }
 
+  // Validate SL/TP values based on trade side and open price
+  validateSlTp(side, openPrice, sl, tp) {
+    const errors = []
+    
+    if (side === 'BUY') {
+      // For BUY: SL must be below entry price, TP must be above entry price
+      if (sl !== null && sl >= openPrice) {
+        errors.push(`Stop Loss (${sl}) must be below entry price (${openPrice}) for BUY trades`)
+      }
+      if (tp !== null && tp <= openPrice) {
+        errors.push(`Take Profit (${tp}) must be above entry price (${openPrice}) for BUY trades`)
+      }
+    } else if (side === 'SELL') {
+      // For SELL: SL must be above entry price, TP must be below entry price
+      if (sl !== null && sl <= openPrice) {
+        errors.push(`Stop Loss (${sl}) must be above entry price (${openPrice}) for SELL trades`)
+      }
+      if (tp !== null && tp >= openPrice) {
+        errors.push(`Take Profit (${tp}) must be below entry price (${openPrice}) for SELL trades`)
+      }
+    }
+    
+    return errors
+  }
+
   // Modify trade SL/TP
   async modifyTrade(tradeId, sl = null, tp = null, adminId = null) {
     const trade = await Trade.findById(tradeId)
     if (!trade) throw new Error('Trade not found')
     if (trade.status !== 'OPEN') throw new Error('Trade is not open')
+
+    // Validate SL/TP values
+    const validationErrors = this.validateSlTp(trade.side, trade.openPrice, sl, tp)
+    if (validationErrors.length > 0) {
+      throw new Error(validationErrors.join('. '))
+    }
 
     const previousValue = { stopLoss: trade.stopLoss, takeProfit: trade.takeProfit }
 

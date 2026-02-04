@@ -23,8 +23,34 @@ class PropTradingEngine {
       MIN_HOLD_TIME: 'MIN_HOLD_TIME',
       DAILY_DRAWDOWN_BREACH: 'DAILY_DRAWDOWN_BREACH',
       OVERALL_DRAWDOWN_BREACH: 'OVERALL_DRAWDOWN_BREACH',
-      INSUFFICIENT_MARGIN: 'INSUFFICIENT_MARGIN'
+      INSUFFICIENT_MARGIN: 'INSUFFICIENT_MARGIN',
+      INVALID_SL_TP: 'INVALID_SL_TP'
     }
+  }
+
+  // Validate SL/TP values based on trade side and open price
+  validateSlTp(side, openPrice, sl, tp) {
+    const errors = []
+    
+    if (side === 'BUY') {
+      // For BUY: SL must be below entry price, TP must be above entry price
+      if (sl !== null && sl >= openPrice) {
+        errors.push(`Stop Loss (${sl}) must be below entry price (${openPrice}) for BUY trades`)
+      }
+      if (tp !== null && tp <= openPrice) {
+        errors.push(`Take Profit (${tp}) must be above entry price (${openPrice}) for BUY trades`)
+      }
+    } else if (side === 'SELL') {
+      // For SELL: SL must be above entry price, TP must be below entry price
+      if (sl !== null && sl <= openPrice) {
+        errors.push(`Stop Loss (${sl}) must be above entry price (${openPrice}) for SELL trades`)
+      }
+      if (tp !== null && tp >= openPrice) {
+        errors.push(`Take Profit (${tp}) must be below entry price (${openPrice}) for SELL trades`)
+      }
+    }
+    
+    return errors
   }
 
   // Check if challenge mode is enabled
@@ -281,6 +307,14 @@ class PropTradingEngine {
                                    (side === 'SELL' && charges.commissionOnSell !== false)
     if (shouldChargeCommission && charges.commissionValue > 0) {
       commission = this.calculateCommission(quantity, openPrice, charges.commissionType, charges.commissionValue, contractSize)
+    }
+
+    // Validate SL/TP values if provided
+    if (sl !== null || tp !== null) {
+      const slTpErrors = this.validateSlTp(side, openPrice, sl, tp)
+      if (slTpErrors.length > 0) {
+        throw new Error(slTpErrors.join('. '))
+      }
     }
 
     // Generate trade ID
