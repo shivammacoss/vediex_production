@@ -10,9 +10,11 @@ dotenv.config()
 const METAAPI_TOKEN = process.env.METAAPI_TOKEN || ''
 const METAAPI_ACCOUNT_ID = process.env.METAAPI_ACCOUNT_ID || ''
 
-// API endpoints
-const API_URL = 'https://mt-client-api-v1.agiliumtrade.agiliumtrade.ai'
-const PROVISIONING_API = 'https://mt-provisioning-api-v1.agiliumtrade.agiliumtrade.ai'
+// API endpoints - MetaAPI uses region-specific endpoints
+// Default to New York region, can be overridden in .env
+const REGION = process.env.METAAPI_REGION || 'vint-hill'
+const API_URL = `https://mt-client-api-v1.${REGION}.agiliumtrade.ai`
+const PROVISIONING_API = `https://mt-provisioning-api-v1.${REGION}.agiliumtrade.ai`
 
 // Price cache
 const priceCache = new Map()
@@ -182,6 +184,8 @@ async function connect() {
   console.log('[MetaAPI] Initializing connection...')
   console.log(`[MetaAPI] Account ID: ${METAAPI_ACCOUNT_ID.substring(0, 8)}...`)
   console.log(`[MetaAPI] Token: ${METAAPI_TOKEN.substring(0, 10)}...`)
+  console.log(`[MetaAPI] Region: ${REGION}`)
+  console.log(`[MetaAPI] API URL: ${API_URL}`)
 
   try {
     // Get account details first
