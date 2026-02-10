@@ -50,7 +50,7 @@ const Navbar = () => {
               <img 
                 src={logoImage} 
                 alt="Vediex Logo" 
-                className="h-8 md:h-10 w-auto object-contain"
+                className="h-12 md:h-14 w-auto object-contain"
               />
             </a>
           </div>
