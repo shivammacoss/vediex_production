@@ -111,14 +111,23 @@ async function fetchSymbolPrice(symbol) {
     const data = await apiRequest(url)
     return data
   } catch (error) {
-    // Symbol might not exist on this broker
+    // Log first few errors for debugging
+    if (!fetchSymbolPrice.errorLogged) {
+      console.error(`[MetaAPI] Price fetch error for ${symbol}:`, error.message)
+      fetchSymbolPrice.errorLogged = true
+    }
     return null
   }
 }
+fetchSymbolPrice.errorLogged = false
 
 // Fetch prices for all symbols
 async function fetchAllPrices() {
-  console.log('[MetaAPI] Fetching prices for all symbols...')
+  // Only log occasionally to avoid spam
+  if (!fetchAllPrices.lastLog || Date.now() - fetchAllPrices.lastLog > 30000) {
+    console.log('[MetaAPI] Fetching prices for all symbols...')
+    fetchAllPrices.lastLog = Date.now()
+  }
   
   let successCount = 0
   let failCount = 0
@@ -157,7 +166,10 @@ async function fetchAllPrices() {
     await new Promise(r => setTimeout(r, 100))
   }
   
-  console.log(`[MetaAPI] Fetched prices: ${successCount} success, ${failCount} failed`)
+  // Only log summary occasionally
+  if (!fetchAllPrices.lastLog || Date.now() - fetchAllPrices.lastLog > 30000) {
+    console.log(`[MetaAPI] Fetched prices: ${successCount} success, ${failCount} failed`)
+  }
 }
 
 // Connect to MetaAPI
@@ -168,6 +180,8 @@ async function connect() {
   }
 
   console.log('[MetaAPI] Initializing connection...')
+  console.log(`[MetaAPI] Account ID: ${METAAPI_ACCOUNT_ID.substring(0, 8)}...`)
+  console.log(`[MetaAPI] Token: ${METAAPI_TOKEN.substring(0, 10)}...`)
 
   try {
     // Get account details first
@@ -175,6 +189,8 @@ async function connect() {
     if (account) {
       console.log(`[MetaAPI] Account: ${account.name} (${account.type})`)
       console.log(`[MetaAPI] State: ${account.state}, Connection Status: ${account.connectionStatus}`)
+    } else {
+      console.log('[MetaAPI] WARNING: Could not get account details - check credentials')
     }
     
     // Fetch initial prices
