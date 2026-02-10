@@ -445,8 +445,8 @@ router.post('/forgot-password', async (req, res) => {
           email: user.email,
           otp,
           expiryMinutes,
-          platformName: 'SetupFX',
-          supportEmail: emailSettings?.fromEmail || 'support@SetupFX.com',
+          platformName: 'Vediex',
+          supportEmail: emailSettings?.fromEmail || 'support@vediex.com',
           year: new Date().getFullYear().toString()
         })
 

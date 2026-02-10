@@ -325,9 +325,9 @@ router.put('/users/:id/ban', async (req, res) => {
           email: user.email,
           reason: reason || 'Policy violation',
           date: new Date().toLocaleString(),
-          platformName: settings?.platformName || 'SetupFX',
-          loginUrl: settings?.loginUrl || 'https://SetupFX.com/login',
-          supportEmail: settings?.supportEmail || 'support@SetupFX.com',
+          platformName: settings?.platformName || 'Vediex',
+          loginUrl: settings?.loginUrl || 'https://Vediex.com/login',
+          supportEmail: settings?.supportEmail || 'support@Vediex.com',
           year: new Date().getFullYear().toString()
         })
       }

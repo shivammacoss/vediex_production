@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { X, Mail, Check, AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { API_URL } from '../config/api'
+import logoImage from '../assets/Vediex.png'
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('')
@@ -103,10 +104,10 @@ const ForgotPassword = () => {
       
       {/* Modal */}
       <div className="relative bg-dark-700 rounded-2xl p-8 w-full max-w-md border border-gray-800">
-        {/* Close button */}
-        <Link to="/user/login" className="absolute top-4 right-4 w-8 h-8 bg-dark-600 rounded-full flex items-center justify-center hover:bg-dark-500 transition-colors">
-          <X size={16} className="text-gray-400" />
-        </Link>
+        {/* Logo */}
+        <div className="flex justify-center mb-6">
+          <img src={logoImage} alt="Vediex" className="h-20 w-auto object-contain" />
+        </div>
 
         {success ? (
           <div className="text-center py-8">

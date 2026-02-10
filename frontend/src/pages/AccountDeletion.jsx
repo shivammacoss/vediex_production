@@ -1,13 +1,13 @@
 const AccountDeletion = () => {
   return (
     <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", maxWidth: 800, margin: '0 auto', padding: 20, lineHeight: 1.6, color: '#e0e0e0', backgroundColor: '#0a0a0a', minHeight: '100vh' }}>
-      <h1 style={{ color: '#fff', borderBottom: '2px solid #2563eb', paddingBottom: 10 }}>Account Deletion Policy - SetupFX24</h1>
+      <h1 style={{ color: '#fff', borderBottom: '2px solid #2563eb', paddingBottom: 10 }}>Account Deletion Policy - Vediex24</h1>
       <p style={{ color: '#999', fontStyle: 'italic' }}>Last Updated: February 8, 2026</p>
 
       <h2 style={{ color: '#fff', marginTop: 30 }}>How to Request Account Deletion</h2>
-      <p>You can request the deletion of your SetupFX24 account and associated data by:</p>
+      <p>You can request the deletion of your Vediex24 account and associated data by:</p>
       <ol>
-        <li><strong>Email:</strong> Send a request to <a href="mailto:support@setupfx24.com" style={{ color: '#2563eb' }}>support@setupfx24.com</a> with the subject line "Account Deletion Request" from the email address associated with your account.</li>
+        <li><strong>Email:</strong> Send a request to <a href="mailto:support@vediex.com" style={{ color: '#2563eb' }}>support@vediex.com</a> with the subject line "Account Deletion Request" from the email address associated with your account.</li>
         <li><strong>In-App:</strong> Navigate to Profile &gt; Support and submit an account deletion request.</li>
       </ol>
 
@@ -35,8 +35,8 @@ const AccountDeletion = () => {
       <h2 style={{ color: '#fff', marginTop: 30 }}>Contact Us</h2>
       <p>For questions about account deletion, contact us at:</p>
       <ul>
-        <li><strong>Email:</strong> <a href="mailto:support@setupfx24.com" style={{ color: '#2563eb' }}>support@setupfx24.com</a></li>
-        <li><strong>Website:</strong> <a href="https://setupfx24.com" style={{ color: '#2563eb' }}>https://setupfx24.com</a></li>
+        <li><strong>Email:</strong> <a href="mailto:support@vediex.com" style={{ color: '#2563eb' }}>support@vediex.com</a></li>
+        <li><strong>Website:</strong> <a href="https://vediex.com" style={{ color: '#2563eb' }}>https://vediex.com</a></li>
       </ul>
     </div>
   )

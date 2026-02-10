@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X, Mail, Lock, Eye, EyeOff, Shield, UserCog } from 'lucide-react'
 import { API_URL } from '../config/api'
+import logoImage from '../assets/Vediex.png'
 
 const EmployeeLogin = () => {
   const navigate = useNavigate()
@@ -50,20 +51,12 @@ const EmployeeLogin = () => {
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-l from-purple-500/20 via-blue-500/20 to-transparent rounded-full blur-3xl" />
       
       <div className="relative bg-dark-700 rounded-2xl p-6 sm:p-8 w-full max-w-md border border-gray-800 mx-4 sm:mx-0">
-        <button 
-          onClick={() => navigate('/')}
-          className="absolute top-4 right-4 w-8 h-8 bg-dark-600 rounded-full flex items-center justify-center hover:bg-dark-500 transition-colors"
-        >
-          <X size={16} className="text-gray-400" />
-        </button>
-
-        <div className="flex items-center gap-2 mb-6">
-          <div className="px-3 py-1 rounded-full text-sm font-medium bg-blue-500/20 text-blue-500">
-            Employee Portal
-          </div>
+        {/* Logo */}
+        <div className="flex justify-center mb-8">
+          <img src={logoImage} alt="Vediex" className="h-20 w-auto object-contain" />
         </div>
 
-        {/* Login Type Toggle - Navigate to different pages */}
+        {/* Login Type Toggle */}
         <div className="flex gap-2 mb-6 p-1 bg-dark-600 rounded-lg">
           <button
             type="button"
@@ -71,19 +64,19 @@ const EmployeeLogin = () => {
             className="flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-colors text-gray-400 hover:text-white"
           >
             <Shield size={16} />
-            Super Admin
+            Admin
           </button>
           <button
             type="button"
-            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-colors bg-blue-500 text-white"
+            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-colors bg-emerald-500 text-white"
           >
             <UserCog size={16} />
             Employee
           </button>
         </div>
 
-        <h1 className="text-2xl font-semibold text-white mb-2">Employee Login</h1>
-        <p className="text-gray-500 text-sm mb-6">Access based on assigned permissions</p>
+        <h1 className="text-2xl font-semibold text-white mb-2 text-center">Employee Login</h1>
+        <p className="text-gray-500 text-sm mb-6 text-center">Sign in to access your dashboard</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
@@ -124,9 +117,9 @@ const EmployeeLogin = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full text-white font-medium py-3 rounded-lg transition-colors mt-2 disabled:opacity-50 bg-blue-500 hover:bg-blue-600"
+            className="w-full text-white font-medium py-3 rounded-lg transition-colors mt-2 disabled:opacity-50 bg-emerald-500 hover:bg-emerald-600"
           >
-            {loading ? 'Signing in...' : 'Sign in as Employee'}
+            {loading ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
 
