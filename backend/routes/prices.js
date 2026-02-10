@@ -1,7 +1,7 @@
 import dotenv from 'dotenv'
 dotenv.config()
 import express from 'express'
-import metaApiService from '../services/metaApiService.js'
+import infowayService from '../services/infowayService.js'
 
 const router = express.Router()
 
@@ -16,7 +16,7 @@ const POPULAR_INSTRUMENTS = {
 
 // Use Infoway service for categorization
 function categorizeSymbol(symbol) {
-  return metaApiService.categorizeSymbol(symbol)
+  return infowayService.categorizeSymbol(symbol)
 }
 
 // Default instruments fallback
@@ -42,10 +42,10 @@ function getDefaultInstruments() {
 // GET /api/prices/instruments - Get all available instruments (only those with live prices)
 router.get('/instruments', async (req, res) => {
   try {
-    console.log('[MetaAPI] Returning supported instruments')
+    console.log('[Infoway] Returning supported instruments')
     
     // Get price cache from Infoway service
-    const priceCache = metaApiService.getPriceCache()
+    const priceCache = infowayService.getPriceCache()
     
     // Only show symbols that have actual price data
     const symbolsWithPrices = Array.from(priceCache.keys())
@@ -66,10 +66,10 @@ router.get('/instruments', async (req, res) => {
       }
     })
     
-    console.log('[MetaAPI] Returning', instruments.length, 'instruments with live prices')
+    console.log('[Infoway] Returning', instruments.length, 'instruments with live prices')
     res.json({ success: true, instruments })
   } catch (error) {
-    console.error('[MetaAPI] Error fetching instruments:', error)
+    console.error('[Infoway] Error fetching instruments:', error)
     res.json({ success: true, instruments: getDefaultInstruments() })
   }
 })
@@ -144,7 +144,7 @@ function getContractSize(symbol) {
 router.get('/:symbol', async (req, res) => {
   try {
     const { symbol } = req.params
-    const SYMBOL_MAP = metaApiService.SYMBOL_MAP
+    const SYMBOL_MAP = infowayService.SYMBOL_MAP
     
     // Check if symbol is supported (allow any symbol, will return null if not available)
     if (!SYMBOL_MAP[symbol] && !symbol) {
@@ -152,11 +152,11 @@ router.get('/:symbol', async (req, res) => {
     }
     
     // Try to get from cache first
-    let price = metaApiService.getPrice(symbol)
+    let price = infowayService.getPrice(symbol)
     
     // If not in cache, fetch via REST API
     if (!price) {
-      price = await metaApiService.fetchPriceREST(symbol)
+      price = await infowayService.fetchPriceREST(symbol)
     }
     
     if (price) {
@@ -165,7 +165,7 @@ router.get('/:symbol', async (req, res) => {
       res.status(404).json({ success: false, message: 'Price not available' })
     }
   } catch (error) {
-    console.error('[MetaAPI] Error fetching price:', error)
+    console.error('[Infoway] Error fetching price:', error)
     res.status(500).json({ success: false, message: error.message })
   }
 })
@@ -178,7 +178,7 @@ router.post('/batch', async (req, res) => {
       return res.status(400).json({ success: false, message: 'symbols array required' })
     }
     
-    const SYMBOL_MAP = metaApiService.SYMBOL_MAP
+    const SYMBOL_MAP = infowayService.SYMBOL_MAP
     const prices = {}
     const missingSymbols = []
     
@@ -186,7 +186,7 @@ router.post('/batch', async (req, res) => {
     for (const symbol of symbols) {
       // Allow any symbol, not just mapped ones
       
-      const cached = metaApiService.getPrice(symbol)
+      const cached = infowayService.getPrice(symbol)
       if (cached) {
         prices[symbol] = { bid: cached.bid, ask: cached.ask }
       } else {
@@ -196,7 +196,7 @@ router.post('/batch', async (req, res) => {
     
     // Fetch missing prices via REST API
     if (missingSymbols.length > 0) {
-      const batchPrices = await metaApiService.fetchBatchPricesREST(missingSymbols)
+      const batchPrices = await infowayService.fetchBatchPricesREST(missingSymbols)
       for (const [symbol, price] of Object.entries(batchPrices)) {
         prices[symbol] = { bid: price.bid, ask: price.ask }
       }
@@ -204,7 +204,7 @@ router.post('/batch', async (req, res) => {
     
     res.json({ success: true, prices })
   } catch (error) {
-    console.error('[MetaAPI] Error fetching batch prices:', error)
+    console.error('[Infoway] Error fetching batch prices:', error)
     res.status(500).json({ success: false, message: error.message })
   }
 })
