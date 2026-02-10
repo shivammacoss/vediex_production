@@ -1,15 +1,31 @@
 import mongoose from 'mongoose'
 import bcrypt from 'bcryptjs'
 import dotenv from 'dotenv'
+import readline from 'readline'
 
 dotenv.config()
 
-// Admin credentials
-const ADMIN_EMAIL = 'admin@vediex.com'
-const ADMIN_PASSWORD = 'Admin@123'
-const ADMIN_FIRST_NAME = 'Super'
-const ADMIN_LAST_NAME = 'Admin'
-const ADMIN_URL_SLUG = 'vediex'
+// Get credentials from environment variables or prompt user
+const ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || null
+const ADMIN_PASSWORD = process.env.SUPER_ADMIN_PASSWORD || null
+const ADMIN_FIRST_NAME = process.env.SUPER_ADMIN_FIRST_NAME || 'Super'
+const ADMIN_LAST_NAME = process.env.SUPER_ADMIN_LAST_NAME || 'Admin'
+const ADMIN_URL_SLUG = process.env.SUPER_ADMIN_SLUG || 'vediex'
+
+// Helper to prompt for input
+function prompt(question, hidden = false) {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  })
+  
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close()
+      resolve(answer)
+    })
+  })
+}
 
 const adminSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, lowercase: true },
@@ -64,29 +80,74 @@ async function createAdmin() {
     await mongoose.connect(process.env.MONGODB_URI)
     console.log('Connected to MongoDB')
 
-    const existingAdmin = await Admin.findOne({ email: ADMIN_EMAIL })
+    // Get credentials - from env or prompt
+    let email = ADMIN_EMAIL
+    let password = ADMIN_PASSWORD
+    let firstName = ADMIN_FIRST_NAME
+    let lastName = ADMIN_LAST_NAME
+    let urlSlug = ADMIN_URL_SLUG
+
+    // If not in env, prompt user
+    if (!email) {
+      console.log('\n🔐 Super Admin Setup\n')
+      email = await prompt('Enter admin email: ')
+    }
+    if (!password) {
+      password = await prompt('Enter admin password (min 8 chars): ')
+    }
+    if (!firstName || firstName === 'Super') {
+      const name = await prompt('Enter first name (default: Super): ')
+      firstName = name || 'Super'
+    }
+    if (!lastName || lastName === 'Admin') {
+      const name = await prompt('Enter last name (default: Admin): ')
+      lastName = name || 'Admin'
+    }
+
+    // Validate
+    if (!email || !email.includes('@')) {
+      console.error('❌ Invalid email address')
+      process.exit(1)
+    }
+    if (!password || password.length < 8) {
+      console.error('❌ Password must be at least 8 characters')
+      process.exit(1)
+    }
+
+    // Check if admin exists
+    const existingAdmin = await Admin.findOne({ email: email.toLowerCase() })
     if (existingAdmin) {
-      console.log('Admin already exists!')
+      console.log('\n⚠️  Admin already exists!')
       console.log('Email:', existingAdmin.email)
       process.exit(0)
     }
 
-    const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, 10)
+    // Check if any super admin exists
+    const existingSuperAdmin = await Admin.findOne({ role: 'SUPER_ADMIN' })
+    if (existingSuperAdmin) {
+      console.log('\n⚠️  A Super Admin already exists!')
+      console.log('Email:', existingSuperAdmin.email)
+      console.log('Use the admin panel to create additional admins.')
+      process.exit(0)
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10)
 
     await Admin.create({
-      email: ADMIN_EMAIL,
+      email: email.toLowerCase(),
       password: hashedPassword,
-      firstName: ADMIN_FIRST_NAME,
-      lastName: ADMIN_LAST_NAME,
+      firstName,
+      lastName,
       role: 'SUPER_ADMIN',
-      urlSlug: ADMIN_URL_SLUG,
+      urlSlug,
       brandName: 'Vediex',
       status: 'ACTIVE'
     })
 
-    console.log('\n✅ Admin created!')
-    console.log('Email:', ADMIN_EMAIL)
-    console.log('Password:', ADMIN_PASSWORD)
+    console.log('\n✅ Super Admin created successfully!')
+    console.log('Email:', email)
+    console.log('\n⚠️  IMPORTANT: Store your password securely. It cannot be recovered.')
+    console.log('Login at: https://admin.vediex.com/admin')
     process.exit(0)
   } catch (error) {
     console.error('Error:', error.message)
