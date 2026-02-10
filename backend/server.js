@@ -37,7 +37,7 @@ import { fileURLToPath } from 'url'
 import copyTradingEngine from './services/copyTradingEngine.js'
 import tradeEngine from './services/tradeEngine.js'
 import propTradingEngine from './services/propTradingEngine.js'
-import infowayService from './services/infowayService.js'
+import metaApiService from './services/metaApiService.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -59,13 +59,13 @@ const io = new Server(httpServer, {
 const connectedClients = new Map()
 const priceSubscribers = new Set()
 
-// Price cache for real-time streaming (shared with Infoway service)
-const priceCache = infowayService.getPriceCache()
+// Price cache for real-time streaming (shared with MetaAPI service)
+const priceCache = metaApiService.getPriceCache()
 
-// Infoway handles all asset classes: Forex, Crypto, Commodities
+// MetaAPI handles all asset classes: Forex, Crypto, Commodities, Indices
 
-// Infoway WebSocket price update handler - emit tick-to-tick updates
-infowayService.setOnPriceUpdate((symbol, price) => {
+// MetaAPI WebSocket price update handler - emit tick-to-tick updates
+metaApiService.setOnPriceUpdate((symbol, price) => {
   if (priceSubscribers.size > 0) {
     // Emit individual price update for tick-to-tick
     io.to('prices').emit('priceUpdate', { symbol, price })
@@ -78,13 +78,13 @@ infowayService.setOnPriceUpdate((symbol, price) => {
   }
 })
 
-// Infoway connection status handler
-infowayService.setOnConnectionChange((connected) => {
-  console.log(`[Infoway] ${connected ? 'Connected' : 'Disconnected'}`)
+// MetaAPI connection status handler
+metaApiService.setOnConnectionChange((connected) => {
+  console.log(`[MetaAPI] ${connected ? 'Connected' : 'Disconnected'}`)
 })
 
-// Start Infoway WebSocket connections
-infowayService.connect()
+// Start MetaAPI WebSocket connections
+metaApiService.connect()
 
 // Background stop-out check every 5 seconds
 setInterval(async () => {
