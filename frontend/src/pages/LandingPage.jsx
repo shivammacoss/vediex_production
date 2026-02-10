@@ -77,13 +77,13 @@ const Navbar = () => {
               Download APK
             </a>
             <a
-              href="/user/login"
+              href="https://trade.vediex.com/user/login"
               className="rounded-lg border border-white/20 bg-white/5 px-4 lg:px-5 py-2 lg:py-2.5 text-[14px] lg:text-[15px] font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/10 active:scale-95"
             >
               Sign In
             </a>
             <a
-              href="/user/signup"
+              href="https://trade.vediex.com/user/signup"
               className="rounded-lg bg-white px-4 lg:px-5 py-2 lg:py-2.5 text-[14px] lg:text-[15px] font-semibold text-[#111111] transition-all hover:bg-opacity-90 active:scale-95"
             >
               Get Started
@@ -125,13 +125,13 @@ const Navbar = () => {
                 Download APK
               </a>
               <a
-                href="/user/login"
+                href="https://trade.vediex.com/user/login"
                 className="w-full rounded-lg border border-white/20 bg-white/5 px-5 py-3 text-[16px] font-semibold text-white transition-all hover:bg-white/10 text-center"
               >
                 Sign In
               </a>
               <a
-                href="/user/signup"
+                href="https://trade.vediex.com/user/signup"
                 className="w-full rounded-lg bg-white px-5 py-3 text-[16px] font-semibold text-[#111111] transition-all hover:bg-opacity-90 text-center"
               >
                 Get Started
@@ -202,14 +202,14 @@ const Hero = () => {
 
             <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start mb-10">
               <a
-                href="/user/signup"
+                href="https://trade.vediex.com/user/signup"
                 className="w-full sm:w-auto rounded-xl bg-emerald-500 hover:bg-emerald-400 px-8 py-4 text-[16px] font-bold text-black transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] text-center flex items-center justify-center gap-2"
               >
                 Start Trading Now
                 <ArrowRight className="w-5 h-5" />
               </a>
               <a
-                href="/user/login"
+                href="https://trade.vediex.com/user/login"
                 className="w-full sm:w-auto text-center rounded-xl border border-white/20 bg-white/5 px-8 py-4 text-[16px] font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/10 active:scale-[0.98]"
               >
                 Sign In
@@ -273,7 +273,7 @@ const Hero = () => {
               </div>
 
               <a 
-                href="/user/signup"
+                href="https://trade.vediex.com/user/signup"
                 className="mt-6 w-full block text-center bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 py-3 rounded-xl font-semibold hover:bg-emerald-500/20 transition-colors"
               >
                 Open Free Account
@@ -373,7 +373,7 @@ const MarketsSection = () => {
         </div>
 
         <div className="text-center mt-10">
-          <a href="/user/signup" className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-8 py-4 rounded-xl transition-all">
+          <a href="https://trade.vediex.com/user/signup" className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-8 py-4 rounded-xl transition-all">
             Start Trading
             <ChevronRight className="w-5 h-5" />
           </a>
@@ -564,14 +564,14 @@ const CTASection = () => {
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <a
-            href="/user/signup"
+            href="https://trade.vediex.com/user/signup"
             className="inline-flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-8 py-4 rounded-xl transition-all"
           >
             Create Free Account
             <ArrowRight className="w-5 h-5" />
           </a>
           <a
-            href="/user/login"
+            href="https://trade.vediex.com/user/login"
             className="inline-flex items-center justify-center gap-2 border border-gray-300 hover:border-gray-400 text-gray-700 font-semibold px-8 py-4 rounded-xl transition-all"
           >
             Sign In
@@ -612,7 +612,7 @@ const Footer = () => {
             <ul className="space-y-2 text-sm">
               <li><a href="#markets" className="text-white/50 hover:text-white transition-colors">Markets</a></li>
               <li><a href="#features" className="text-white/50 hover:text-white transition-colors">Platform</a></li>
-              <li><a href="/user/signup" className="text-white/50 hover:text-white transition-colors">Open Account</a></li>
+              <li><a href="https://trade.vediex.com/user/signup" className="text-white/50 hover:text-white transition-colors">Open Account</a></li>
               <li><a href="#download" className="text-white/50 hover:text-white transition-colors">Mobile App</a></li>
             </ul>
           </div>
