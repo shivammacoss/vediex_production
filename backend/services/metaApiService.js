@@ -30,6 +30,7 @@ let reconnectTimeout = null
 let pricePollingInterval = null
 
 // Symbol lists for different asset classes
+// Using common MT4/MT5 symbol names
 const FOREX_SYMBOLS = [
   'EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'NZDUSD', 'USDCAD',
   'EURGBP', 'EURJPY', 'GBPJPY', 'EURCHF', 'EURAUD', 'EURCAD', 'AUDCAD',
@@ -38,20 +39,19 @@ const FOREX_SYMBOLS = [
 ]
 
 const CRYPTO_SYMBOLS = [
-  'BTCUSD', 'ETHUSD', 'LTCUSD', 'XRPUSD', 'BCHUSD', 'ADAUSD', 'DOTUSD',
-  'LINKUSD', 'UNIUSD', 'DOGEUSD', 'SOLUSD', 'MATICUSD', 'AVAXUSD', 'ATOMUSD'
+  'BTCUSD', 'ETHUSD'
 ]
 
 const METAL_SYMBOLS = [
-  'XAUUSD', 'XAGUSD', 'XPTUSD', 'XPDUSD'
+  'XAUUSD', 'XAGUSD'
 ]
 
 const ENERGY_SYMBOLS = [
-  'USOIL', 'UKOIL', 'NGAS'
+  'XTIUSD', 'XBRUSD'
 ]
 
 const INDEX_SYMBOLS = [
-  'US30', 'US500', 'USTEC', 'DE30', 'UK100', 'JP225'
+  'US30', 'US500', 'USTEC'
 ]
 
 // All symbols to subscribe
@@ -125,17 +125,11 @@ fetchSymbolPrice.errorLogged = false
 
 // Fetch prices for all symbols
 async function fetchAllPrices() {
-  // Only log occasionally to avoid spam
-  if (!fetchAllPrices.lastLog || Date.now() - fetchAllPrices.lastLog > 30000) {
-    console.log('[MetaAPI] Fetching prices for all symbols...')
-    fetchAllPrices.lastLog = Date.now()
-  }
-  
   let successCount = 0
   let failCount = 0
   
   // Fetch in batches to avoid rate limiting
-  const batchSize = 10
+  const batchSize = 5
   for (let i = 0; i < ALL_SYMBOLS.length; i += batchSize) {
     const batch = ALL_SYMBOLS.slice(i, i + batchSize)
     
@@ -165,13 +159,11 @@ async function fetchAllPrices() {
     }))
     
     // Small delay between batches
-    await new Promise(r => setTimeout(r, 100))
+    await new Promise(r => setTimeout(r, 200))
   }
   
-  // Only log summary occasionally
-  if (!fetchAllPrices.lastLog || Date.now() - fetchAllPrices.lastLog > 30000) {
-    console.log(`[MetaAPI] Fetched prices: ${successCount} success, ${failCount} failed`)
-  }
+  // Log summary every time for debugging
+  console.log(`[MetaAPI] Prices: ${successCount} success, ${failCount} failed, cache size: ${priceCache.size}`)
 }
 
 // Connect to MetaAPI
