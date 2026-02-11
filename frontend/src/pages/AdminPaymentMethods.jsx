@@ -14,7 +14,8 @@ import {
   Settings,
   Building,
   Smartphone,
-  QrCode
+  QrCode,
+  Coins
 } from 'lucide-react'
 import { API_URL } from '../config/api'
 
@@ -36,6 +37,11 @@ const AdminPaymentMethods = () => {
     ifscCode: '',
     upiId: '',
     qrCodeImage: '',
+    tokenName: '',
+    tokenNetwork: '',
+    tokenAddress: '',
+    minimumAmount: 150,
+    require2FA: false,
     isActive: true
   })
 
@@ -119,7 +125,7 @@ const AdminPaymentMethods = () => {
   }
 
   const resetForm = () => {
-    setFormData({ type: 'Bank Transfer', bankName: '', accountNumber: '', accountHolderName: '', ifscCode: '', upiId: '', qrCodeImage: '', isActive: true })
+    setFormData({ type: 'Bank Transfer', bankName: '', accountNumber: '', accountHolderName: '', ifscCode: '', upiId: '', qrCodeImage: '', tokenName: '', tokenNetwork: '', tokenAddress: '', minimumAmount: 150, require2FA: false, isActive: true })
     setEditingMethod(null)
     setError('')
   }
@@ -133,6 +139,7 @@ const AdminPaymentMethods = () => {
   const getIcon = (type) => {
     if (type === 'Bank Transfer') return <Building size={24} />
     if (type === 'UPI') return <Smartphone size={24} />
+    if (type === 'Token') return <Coins size={24} />
     return <QrCode size={24} />
   }
 
@@ -205,6 +212,13 @@ const AdminPaymentMethods = () => {
                     )}
                     {method.type === 'UPI' && <p className="text-gray-400">UPI ID: <span className="text-white">{method.upiId || 'N/A'}</span></p>}
                     {method.type === 'QR Code' && <p className="text-gray-400">QR: <span className="text-white">{method.qrCodeImage ? 'Uploaded' : 'Not set'}</span></p>}
+                    {method.type === 'Token' && (
+                      <>
+                        <p className="text-gray-400">Token: <span className="text-white">{method.tokenName || 'N/A'}</span></p>
+                        <p className="text-gray-400">Network: <span className="text-white">{method.tokenNetwork || 'N/A'}</span></p>
+                        <p className="text-gray-400">Min: <span className="text-white">${method.minimumAmount || 150}</span></p>
+                      </>
+                    )}
                   </div>
 
                   <div className="flex gap-2">
@@ -240,6 +254,7 @@ const AdminPaymentMethods = () => {
                   <option value="Bank Transfer">Bank Transfer</option>
                   <option value="UPI">UPI</option>
                   <option value="QR Code">QR Code</option>
+                  <option value="Token">Token</option>
                 </select>
               </div>
 
@@ -258,6 +273,19 @@ const AdminPaymentMethods = () => {
 
               {formData.type === 'QR Code' && (
                 <input type="text" value={formData.qrCodeImage} onChange={(e) => setFormData({ ...formData, qrCodeImage: e.target.value })} placeholder="QR Code Image URL" className="w-full bg-dark-700 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none" />
+              )}
+
+              {formData.type === 'Token' && (
+                <>
+                  <input type="text" value={formData.tokenName} onChange={(e) => setFormData({ ...formData, tokenName: e.target.value })} placeholder="Token Name (e.g., USDT, BTC)" className="w-full bg-dark-700 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none" />
+                  <input type="text" value={formData.tokenNetwork} onChange={(e) => setFormData({ ...formData, tokenNetwork: e.target.value })} placeholder="Network (e.g., TRC20, ERC20, BEP20)" className="w-full bg-dark-700 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none" />
+                  <input type="text" value={formData.tokenAddress} onChange={(e) => setFormData({ ...formData, tokenAddress: e.target.value })} placeholder="Wallet Address" className="w-full bg-dark-700 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none" />
+                  <input type="number" value={formData.minimumAmount} onChange={(e) => setFormData({ ...formData, minimumAmount: parseFloat(e.target.value) || 150 })} placeholder="Minimum Amount (USD)" className="w-full bg-dark-700 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none" />
+                  <label className="flex items-center gap-2 text-gray-400">
+                    <input type="checkbox" checked={formData.require2FA} onChange={(e) => setFormData({ ...formData, require2FA: e.target.checked })} className="w-4 h-4 rounded" />
+                    Require Google 2FA for withdrawals
+                  </label>
+                </>
               )}
             </div>
 

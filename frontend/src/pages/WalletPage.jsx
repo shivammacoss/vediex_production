@@ -28,6 +28,7 @@ import {
   Home,
   Upload,
   Image,
+  Coins,
   BookOpen,
   Sun,
   Moon,
@@ -415,6 +416,7 @@ const WalletPage = () => {
       case 'Bank Transfer': return <Building size={18} />
       case 'UPI': return <Smartphone size={18} />
       case 'QR Code': return <QrCode size={18} />
+      case 'Token': return <Coins size={18} />
       default: return <Wallet size={18} />
     }
   }
@@ -878,6 +880,31 @@ const WalletPage = () => {
                 )}
                 {selectedPaymentMethod.type === 'QR Code' && selectedPaymentMethod.qrCodeImage && (
                   <img src={selectedPaymentMethod.qrCodeImage} alt="QR Code" className="mx-auto max-w-48" />
+                )}
+                {selectedPaymentMethod.type === 'Token' && (
+                  <div className="space-y-2 text-sm">
+                    {selectedPaymentMethod.minimumAmount && (
+                      <p className="text-pink-500 font-medium mb-3">Note: Minimum {selectedPaymentMethod.minimumAmount} USD</p>
+                    )}
+                    {selectedPaymentMethod.tokenName && (
+                      <p className="text-gray-400 flex items-center justify-between cursor-pointer hover:bg-dark-600 p-1 rounded" onClick={() => { navigator.clipboard.writeText(selectedPaymentMethod.tokenName); setSuccess('Token name copied!'); setTimeout(() => setSuccess(''), 2000); }}>
+                        Token: <span className="text-white">{selectedPaymentMethod.tokenName}</span>
+                        <Copy size={14} className="text-gray-500 ml-2" />
+                      </p>
+                    )}
+                    {selectedPaymentMethod.tokenNetwork && (
+                      <p className="text-gray-400 flex items-center justify-between cursor-pointer hover:bg-dark-600 p-1 rounded" onClick={() => { navigator.clipboard.writeText(selectedPaymentMethod.tokenNetwork); setSuccess('Network copied!'); setTimeout(() => setSuccess(''), 2000); }}>
+                        Network: <span className="text-white">{selectedPaymentMethod.tokenNetwork}</span>
+                        <Copy size={14} className="text-gray-500 ml-2" />
+                      </p>
+                    )}
+                    {selectedPaymentMethod.tokenAddress && (
+                      <p className="text-gray-400 flex items-center justify-between cursor-pointer hover:bg-dark-600 p-1 rounded" onClick={() => { navigator.clipboard.writeText(selectedPaymentMethod.tokenAddress); setSuccess('Address copied!'); setTimeout(() => setSuccess(''), 2000); }}>
+                        Address: <span className="text-white text-xs break-all">{selectedPaymentMethod.tokenAddress}</span>
+                        <Copy size={14} className="text-gray-500 ml-2 flex-shrink-0" />
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             )}

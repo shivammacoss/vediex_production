@@ -3,7 +3,7 @@ import mongoose from 'mongoose'
 const paymentMethodSchema = new mongoose.Schema({
   type: {
     type: String,
-    enum: ['Bank Transfer', 'UPI', 'QR Code'],
+    enum: ['Bank Transfer', 'UPI', 'QR Code', 'Token'],
     required: true
   },
   // Bank Transfer fields
@@ -26,6 +26,24 @@ const paymentMethodSchema = new mongoose.Schema({
   // QR Code fields
   qrCodeImage: {
     type: String
+  },
+  // Token fields
+  tokenName: {
+    type: String
+  },
+  tokenNetwork: {
+    type: String
+  },
+  tokenAddress: {
+    type: String
+  },
+  minimumAmount: {
+    type: Number,
+    default: 150
+  },
+  require2FA: {
+    type: Boolean,
+    default: false
   },
   // Common fields
   isActive: {
