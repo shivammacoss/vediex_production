@@ -73,7 +73,7 @@ function categorizeSymbol(symbol) {
   if (FOREX_SYMBOLS.includes(symbol)) return 'Forex'
   if (CRYPTO_SYMBOLS.includes(symbol)) return 'Crypto'
   if (METAL_SYMBOLS.includes(symbol)) return 'Metals'
-  if (ENERGY_SYMBOLS.includes(symbol)) return 'Energy'
+  if (ENERGY_SYMBOLS.includes(symbol)) return 'Commodities'
   if (INDEX_SYMBOLS.includes(symbol)) return 'Indices'
   return 'Other'
 }
