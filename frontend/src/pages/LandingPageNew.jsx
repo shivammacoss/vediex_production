@@ -4,7 +4,7 @@ import {
   Menu, X, BarChart3, Bitcoin, TrendingUp, TrendingDown,
   Coins, Star, ArrowRight, LineChart, PieChart, Globe, Zap, DollarSign,
   Activity, Gauge, Shield, Lightbulb, Rocket, Building2, BookOpen, Users, HelpCircle,
-  MessageCircle, FileQuestion, Instagram, Facebook, Github, KeyRound, Fingerprint, Server, Lock, Eye
+  MessageCircle, FileQuestion, Instagram, Facebook, Github, KeyRound, Fingerprint, Server, Lock, Eye, Download
 } from 'lucide-react'
 
 // Animation hooks
@@ -102,6 +102,10 @@ const Navbar = () => {
             })}
           </div>
           <div className="hidden lg:flex items-center gap-3">
+            <a href="/vediex-app.apk" download className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-500/20 border border-green-500/30 rounded-lg hover:bg-green-500/30 transition-colors">
+              <Download size={16} />
+              Download App
+            </a>
             <a href={`${TRADE_URL}/user/login`} className="px-4 py-2 text-sm font-medium text-white hover:text-[#A29BFE] transition-colors">Log In</a>
             <a href={`${TRADE_URL}/user/signup`} className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#6C5CE7] to-[#A29BFE] rounded-lg hover:shadow-lg hover:shadow-[#6C5CE7]/25 transition-all">Sign Up</a>
           </div>
@@ -120,6 +124,10 @@ const Navbar = () => {
                 </a>
               ))}
               <div className="pt-4 flex flex-col gap-2 border-t border-[rgba(108,92,231,0.15)] mt-2">
+                <a href="/vediex-app.apk" download className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-white bg-green-500/20 border border-green-500/30 rounded-lg">
+                  <Download size={16} />
+                  Download App
+                </a>
                 <a href={`${TRADE_URL}/user/login`} className="px-4 py-3 text-sm text-center text-white hover:bg-white/5 rounded-lg">Log In</a>
                 <a href={`${TRADE_URL}/user/signup`} className="px-4 py-3 text-sm text-center font-semibold text-white bg-gradient-to-r from-[#6C5CE7] to-[#A29BFE] rounded-lg">Sign Up</a>
               </div>
