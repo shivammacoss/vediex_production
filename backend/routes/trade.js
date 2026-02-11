@@ -3,6 +3,7 @@ import Trade from '../models/Trade.js'
 import TradingAccount from '../models/TradingAccount.js'
 import ChallengeAccount from '../models/ChallengeAccount.js'
 import Charges from '../models/Charges.js'
+import PartialCloseHistory from '../models/PartialCloseHistory.js'
 import tradeEngine from '../services/tradeEngine.js'
 import propTradingEngine from '../services/propTradingEngine.js'
 import copyTradingEngine from '../services/copyTradingEngine.js'
@@ -789,6 +790,257 @@ router.post('/check-pending', async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: error.message 
+    })
+  }
+})
+
+// POST /api/trade/partial-close - Partially close a trade
+router.post('/partial-close', async (req, res) => {
+  try {
+    const { tradeId, closeLot, bid, ask } = req.body
+
+    // Validate required fields
+    if (!tradeId || !closeLot || !bid || !ask) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: tradeId, closeLot, bid, ask'
+      })
+    }
+
+    const closeQuantity = parseFloat(closeLot)
+    if (isNaN(closeQuantity) || closeQuantity <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Close lot must be greater than 0'
+      })
+    }
+
+    // Find the trade
+    const trade = await Trade.findOne({ 
+      $or: [{ _id: tradeId }, { tradeId: tradeId }],
+      status: 'OPEN'
+    })
+
+    if (!trade) {
+      return res.status(404).json({
+        success: false,
+        message: 'Trade not found or already closed'
+      })
+    }
+
+    // Validate close quantity
+    if (closeQuantity > trade.quantity) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot close ${closeQuantity} lots. Only ${trade.quantity} lots remaining.`
+      })
+    }
+
+    // If closing entire position, redirect to full close
+    if (closeQuantity >= trade.quantity) {
+      return res.status(400).json({
+        success: false,
+        message: 'Use full close endpoint to close entire position'
+      })
+    }
+
+    const closePrice = trade.side === 'BUY' ? parseFloat(bid) : parseFloat(ask)
+    
+    // Get charges for commission calculation
+    let closeCommission = 0
+    try {
+      const charges = await Charges.getChargesForTrade(
+        trade.userId,
+        trade.symbol,
+        trade.segment,
+        trade.tradingAccountId
+      )
+      
+      if (charges && charges.commissionOnClose && charges.commissionValue > 0) {
+        if (charges.commissionType === 'FIXED') {
+          closeCommission = charges.commissionValue * (closeQuantity / trade.quantity)
+        } else if (charges.commissionType === 'PER_LOT') {
+          closeCommission = closeQuantity * charges.commissionValue
+        } else if (charges.commissionType === 'PERCENTAGE') {
+          const tradeValue = closeQuantity * trade.contractSize * closePrice
+          closeCommission = tradeValue * (charges.commissionValue / 100)
+        }
+      }
+    } catch (e) {
+      console.log('Could not get charges for partial close:', e.message)
+    }
+
+    // Calculate PnL for closed portion
+    let rawPnl = 0
+    if (trade.side === 'BUY') {
+      rawPnl = (closePrice - trade.openPrice) * closeQuantity * trade.contractSize
+    } else {
+      rawPnl = (trade.openPrice - closePrice) * closeQuantity * trade.contractSize
+    }
+
+    // Proportional swap for closed portion
+    const proportionalSwap = (trade.swap || 0) * (closeQuantity / trade.quantity)
+    const realizedPnl = rawPnl - proportionalSwap - closeCommission
+
+    // Update trading account balance
+    const account = await TradingAccount.findById(trade.tradingAccountId)
+    if (!account) {
+      return res.status(404).json({
+        success: false,
+        message: 'Trading account not found'
+      })
+    }
+
+    // Add realized PnL to balance
+    if (realizedPnl >= 0) {
+      account.balance += realizedPnl
+    } else {
+      const loss = Math.abs(realizedPnl)
+      if (account.balance >= loss) {
+        account.balance -= loss
+      } else {
+        const remainingLoss = loss - account.balance
+        account.balance = 0
+        account.credit = Math.max(0, (account.credit || 0) - remainingLoss)
+      }
+    }
+
+    // Release proportional margin
+    const releasedMargin = trade.marginUsed * (closeQuantity / trade.quantity)
+    account.balance += releasedMargin
+
+    await account.save()
+
+    // Create partial close history record
+    const originalQuantity = trade.quantity
+    const remainingQuantity = trade.quantity - closeQuantity
+
+    await PartialCloseHistory.create({
+      tradeId: trade._id,
+      tradeIdString: trade.tradeId,
+      userId: trade.userId,
+      tradingAccountId: trade.tradingAccountId,
+      symbol: trade.symbol,
+      side: trade.side,
+      originalLot: originalQuantity,
+      closedLot: closeQuantity,
+      remainingLot: remainingQuantity,
+      openPrice: trade.openPrice,
+      closePrice: closePrice,
+      realizedPnl: realizedPnl,
+      commission: closeCommission,
+      swap: proportionalSwap,
+      closedBy: 'USER'
+    })
+
+    // Update trade with remaining quantity and adjusted margin/swap
+    trade.quantity = remainingQuantity
+    trade.marginUsed = trade.marginUsed - releasedMargin
+    trade.swap = (trade.swap || 0) - proportionalSwap
+    await trade.save()
+
+    console.log(`[PartialClose] Trade ${trade.tradeId}: Closed ${closeQuantity} lots, remaining ${remainingQuantity} lots, PnL: $${realizedPnl.toFixed(2)}`)
+
+    res.json({
+      success: true,
+      message: `Partially closed ${closeQuantity} lots`,
+      trade: {
+        tradeId: trade.tradeId,
+        symbol: trade.symbol,
+        side: trade.side,
+        originalLot: originalQuantity,
+        closedLot: closeQuantity,
+        remainingLot: remainingQuantity,
+        closePrice: closePrice,
+        realizedPnl: realizedPnl
+      },
+      newBalance: account.balance
+    })
+
+  } catch (error) {
+    console.error('Error in partial close:', error)
+    res.status(500).json({
+      success: false,
+      message: error.message
+    })
+  }
+})
+
+// POST /api/trade/full-close - Fully close a trade (wrapper for existing close)
+router.post('/full-close', async (req, res) => {
+  try {
+    const { tradeId, bid, ask } = req.body
+
+    if (!tradeId || !bid || !ask) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: tradeId, bid, ask'
+      })
+    }
+
+    // Find the trade
+    const trade = await Trade.findOne({ 
+      $or: [{ _id: tradeId }, { tradeId: tradeId }],
+      status: 'OPEN'
+    })
+
+    if (!trade) {
+      return res.status(404).json({
+        success: false,
+        message: 'Trade not found or already closed'
+      })
+    }
+
+    // Use existing trade engine close
+    const result = await tradeEngine.closeTrade(
+      trade._id,
+      parseFloat(bid),
+      parseFloat(ask),
+      'USER'
+    )
+
+    // Process IB commission
+    try {
+      await ibEngine.processTradeCommission(result.trade)
+    } catch (e) {
+      console.log('IB commission error:', e.message)
+    }
+
+    res.json({
+      success: true,
+      message: 'Trade fully closed',
+      trade: result.trade,
+      realizedPnl: result.realizedPnl
+    })
+
+  } catch (error) {
+    console.error('Error in full close:', error)
+    res.status(500).json({
+      success: false,
+      message: error.message
+    })
+  }
+})
+
+// GET /api/trade/partial-history/:tradeId - Get partial close history for a trade
+router.get('/partial-history/:tradeId', async (req, res) => {
+  try {
+    const { tradeId } = req.params
+
+    const history = await PartialCloseHistory.find({
+      $or: [{ tradeId: tradeId }, { tradeIdString: tradeId }]
+    }).sort({ closedAt: -1 })
+
+    res.json({
+      success: true,
+      history: history
+    })
+
+  } catch (error) {
+    console.error('Error fetching partial close history:', error)
+    res.status(500).json({
+      success: false,
+      message: error.message
     })
   }
 })

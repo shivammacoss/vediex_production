@@ -6,6 +6,7 @@ import binanceApiService from '../services/binanceApi'
 import priceStreamService from '../services/priceStream'
 import { useTheme } from '../context/ThemeContext'
 import { API_URL } from '../config/api'
+import CloseTradeModal from '../components/CloseTradeModal'
 
 const TradingPage = () => {
   const navigate = useNavigate()
@@ -986,7 +987,70 @@ const TradingPage = () => {
     setShowCloseModal(true)
   }
 
-  // Confirm close trade
+  // Get current price for a trade
+  const getCurrentPriceForTrade = (trade) => {
+    const livePrice = livePrices[trade.symbol]
+    const inst = instruments.find(i => i.symbol === trade.symbol) || selectedInstrument
+    return {
+      bid: livePrice?.bid || inst.bid || 0,
+      ask: livePrice?.ask || inst.ask || 0
+    }
+  }
+
+  // Handle partial close
+  const handlePartialClose = async (trade, closeLot, currentPrice) => {
+    const token = localStorage.getItem('token')
+    const res = await fetch(`${API_URL}/trade/partial-close`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        tradeId: trade._id || trade.tradeId,
+        closeLot: closeLot,
+        bid: currentPrice.bid,
+        ask: currentPrice.ask
+      })
+    })
+    const data = await res.json()
+    if (!data.success) {
+      throw new Error(data.message || 'Failed to partial close')
+    }
+    // Refresh trades and account
+    fetchOpenTrades()
+    fetchTradeHistory()
+    fetchAccountSummary()
+    return data
+  }
+
+  // Handle full close via new endpoint
+  const handleFullClose = async (trade, currentPrice) => {
+    const token = localStorage.getItem('token')
+    const res = await fetch(`${API_URL}/trade/full-close`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        tradeId: trade._id || trade.tradeId,
+        bid: currentPrice.bid,
+        ask: currentPrice.ask
+      })
+    })
+    const data = await res.json()
+    if (!data.success) {
+      throw new Error(data.message || 'Failed to close trade')
+    }
+    // Refresh trades and account
+    fetchOpenTrades()
+    fetchTradeHistory()
+    fetchAccountSummary()
+    return data
+  }
+
+  // Confirm close trade (legacy - for close all)
   const handleConfirmClose = async () => {
     if (!selectedTradeForClose) return
     await closeTrade(selectedTradeForClose._id)
@@ -2375,70 +2439,15 @@ const TradingPage = () => {
         </div>
       )}
 
-      {/* iOS-Style Close Trade Confirmation Modal */}
-      {showCloseModal && selectedTradeForClose && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center">
-          <div className="w-full sm:w-80 bg-[#1c1c1e] sm:rounded-2xl rounded-t-2xl overflow-hidden animate-slide-up">
-            {/* Header */}
-            <div className="px-4 py-4 text-center">
-              <h3 className="text-white font-semibold text-lg">Close Trade?</h3>
-              <p className="text-gray-400 text-sm mt-2">
-                {selectedTradeForClose.symbol} • {selectedTradeForClose.side} • {selectedTradeForClose.quantity} lots
-              </p>
-              <p className="text-gray-500 text-xs mt-1">
-                This action cannot be undone
-              </p>
-            </div>
-
-            {/* Actions */}
-            <div className="border-t border-gray-700/50">
-              <button
-                onClick={handleConfirmClose}
-                className="w-full py-4 text-red-500 font-semibold text-lg hover:bg-[#2c2c2e] transition-colors"
-              >
-                Close Trade
-              </button>
-            </div>
-            {/* Close All Options */}
-            {openTrades.length > 1 && (
-              <>
-                <div className="border-t border-gray-700/50">
-                  <button
-                    onClick={() => { setShowCloseModal(false); handleCloseAllTrades('all'); }}
-                    className="w-full py-4 text-orange-500 font-medium text-lg hover:bg-[#2c2c2e] transition-colors"
-                  >
-                    Close All ({openTrades.length})
-                  </button>
-                </div>
-                <div className="border-t border-gray-700/50">
-                  <button
-                    onClick={() => { setShowCloseModal(false); handleCloseAllTrades('profit'); }}
-                    className="w-full py-4 text-green-500 font-medium text-lg hover:bg-[#2c2c2e] transition-colors"
-                  >
-                    Close Profit
-                  </button>
-                </div>
-                <div className="border-t border-gray-700/50">
-                  <button
-                    onClick={() => { setShowCloseModal(false); handleCloseAllTrades('loss'); }}
-                    className="w-full py-4 text-red-400 font-medium text-lg hover:bg-[#2c2c2e] transition-colors"
-                  >
-                    Close Loss
-                  </button>
-                </div>
-              </>
-            )}
-            <div className="border-t border-gray-700/50">
-              <button
-                onClick={() => setShowCloseModal(false)}
-                className="w-full py-4 text-blue-500 font-medium text-lg hover:bg-[#2c2c2e] transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Advanced Close Trade Modal with Partial Close */}
+      <CloseTradeModal
+        isOpen={showCloseModal}
+        onClose={() => setShowCloseModal(false)}
+        trade={selectedTradeForClose}
+        currentPrice={selectedTradeForClose ? getCurrentPriceForTrade(selectedTradeForClose) : null}
+        onPartialClose={handlePartialClose}
+        onFullClose={handleFullClose}
+      />
 
       {/* iOS-Style Close All Trades Confirmation Modal */}
       {showCloseAllModal && (
