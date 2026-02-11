@@ -30,12 +30,10 @@ let reconnectTimeout = null
 let pricePollingInterval = null
 
 // Symbol lists for different asset classes
-// Using common MT4/MT5 symbol names
+// Reduced list to avoid rate limiting - only most popular symbols
 const FOREX_SYMBOLS = [
-  'EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'NZDUSD', 'USDCAD',
-  'EURGBP', 'EURJPY', 'GBPJPY', 'EURCHF', 'EURAUD', 'EURCAD', 'AUDCAD',
-  'AUDJPY', 'CADJPY', 'CHFJPY', 'NZDJPY', 'AUDNZD', 'CADCHF', 'GBPCHF',
-  'GBPNZD', 'EURNZD', 'NZDCAD', 'NZDCHF', 'AUDCHF', 'GBPAUD', 'GBPCAD'
+  'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF',
+  'EURGBP', 'EURJPY', 'GBPJPY'
 ]
 
 const CRYPTO_SYMBOLS = [
@@ -47,12 +45,15 @@ const METAL_SYMBOLS = [
 ]
 
 const ENERGY_SYMBOLS = [
-  'XTIUSD', 'XBRUSD'
+  'XTIUSD'
 ]
 
 const INDEX_SYMBOLS = [
-  'US30', 'US500', 'USTEC'
+  'US30', 'US500'
 ]
+
+// Rate limiting state
+let rateLimitedUntil = 0
 
 // All symbols to subscribe
 let ALL_SYMBOLS = [
@@ -113,6 +114,10 @@ async function fetchSymbolPrice(symbol) {
     const data = await apiRequest(url)
     return data
   } catch (error) {
+    // Check for rate limiting
+    if (error.message.includes('429')) {
+      return 'RATE_LIMITED'
+    }
     // Log first few errors for debugging
     if (!fetchSymbolPrice.errorLogged) {
       console.error(`[MetaAPI] Price fetch error for ${symbol}:`, error.message)
@@ -125,46 +130,58 @@ fetchSymbolPrice.errorLogged = false
 
 // Fetch prices for all symbols
 async function fetchAllPrices() {
-  let successCount = 0
-  let failCount = 0
-  
-  // Fetch in batches to avoid rate limiting
-  const batchSize = 5
-  for (let i = 0; i < ALL_SYMBOLS.length; i += batchSize) {
-    const batch = ALL_SYMBOLS.slice(i, i + batchSize)
-    
-    await Promise.all(batch.map(async (symbol) => {
-      try {
-        const price = await fetchSymbolPrice(symbol)
-        if (price && price.bid && price.ask) {
-          const priceData = {
-            bid: price.bid,
-            ask: price.ask,
-            mid: (price.bid + price.ask) / 2,
-            time: Date.now(),
-            spread: price.ask - price.bid
-          }
-          priceCache.set(symbol, priceData)
-          
-          if (onPriceUpdate) {
-            onPriceUpdate(symbol, priceData)
-          }
-          successCount++
-        } else {
-          failCount++
-        }
-      } catch (e) {
-        failCount++
-      }
-    }))
-    
-    // Small delay between batches
-    await new Promise(r => setTimeout(r, 200))
+  // Check if we're rate limited
+  if (Date.now() < rateLimitedUntil) {
+    console.log(`[MetaAPI] Rate limited, waiting ${Math.ceil((rateLimitedUntil - Date.now()) / 1000)}s...`)
+    return
   }
   
-  // Log summary every time for debugging
-  console.log(`[MetaAPI] Prices: ${successCount} success, ${failCount} failed, cache size: ${priceCache.size}`)
+  let successCount = 0
+  let failCount = 0
+  let rateLimited = false
+  
+  // Fetch one symbol at a time with delay to avoid rate limiting
+  for (const symbol of ALL_SYMBOLS) {
+    if (rateLimited) break
+    
+    try {
+      const price = await fetchSymbolPrice(symbol)
+      if (price && price.bid && price.ask) {
+        const priceData = {
+          bid: price.bid,
+          ask: price.ask,
+          mid: (price.bid + price.ask) / 2,
+          time: Date.now(),
+          spread: price.ask - price.bid
+        }
+        priceCache.set(symbol, priceData)
+        
+        if (onPriceUpdate) {
+          onPriceUpdate(symbol, priceData)
+        }
+        successCount++
+      } else if (price === 'RATE_LIMITED') {
+        rateLimited = true
+        rateLimitedUntil = Date.now() + 60000 // Wait 60 seconds
+        console.log('[MetaAPI] Rate limited! Pausing for 60 seconds...')
+      } else {
+        failCount++
+      }
+    } catch (e) {
+      failCount++
+    }
+    
+    // 500ms delay between each request
+    await new Promise(r => setTimeout(r, 500))
+  }
+  
+  // Log summary
+  if (successCount > 0 || !fetchAllPrices.lastLog || Date.now() - fetchAllPrices.lastLog > 30000) {
+    console.log(`[MetaAPI] Prices: ${successCount} success, ${failCount} failed, cache size: ${priceCache.size}`)
+    fetchAllPrices.lastLog = Date.now()
+  }
 }
+fetchAllPrices.lastLog = 0
 
 // Connect to MetaAPI
 async function connect() {
@@ -197,7 +214,7 @@ async function connect() {
     
     console.log(`[MetaAPI] Connected! Price cache: ${priceCache.size} symbols`)
     
-    // Start polling for price updates every 2 seconds
+    // Start polling for price updates every 15 seconds (to avoid rate limiting)
     if (pricePollingInterval) clearInterval(pricePollingInterval)
     pricePollingInterval = setInterval(async () => {
       try {
@@ -205,7 +222,7 @@ async function connect() {
       } catch (e) {
         console.error('[MetaAPI] Price polling error:', e.message)
       }
-    }, 2000)
+    }, 15000)
     
   } catch (error) {
     console.error('[MetaAPI] Connection error:', error.message)
