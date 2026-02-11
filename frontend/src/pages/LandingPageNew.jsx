@@ -5,7 +5,7 @@ import {
   Menu, X, Mail, Lock, User, Eye, EyeOff, BarChart3, Bitcoin, TrendingUp, TrendingDown,
   Coins, Star, ArrowRight, LineChart, PieChart, Globe, AlertTriangle, Zap, DollarSign,
   Activity, Gauge, Shield, Lightbulb, Rocket, Building2, BookOpen, Users, HelpCircle,
-  MessageCircle, FileQuestion, Instagram, Facebook, Github, KeyRound, Fingerprint, Server
+  MessageCircle, FileQuestion, Instagram, Facebook, Github, KeyRound, Fingerprint, Server, ChevronDown
 } from 'lucide-react'
 
 // Animation hooks
@@ -33,27 +33,47 @@ const staggerContainer = {
   visible: { transition: { staggerChildren: 0.12 } },
 }
 
+// Country codes for phone number
+const countries = [
+  { code: '+91', name: 'India', flag: '🇮🇳' },
+  { code: '+1', name: 'United States', flag: '🇺🇸' },
+  { code: '+44', name: 'United Kingdom', flag: '🇬🇧' },
+  { code: '+61', name: 'Australia', flag: '🇦🇺' },
+  { code: '+971', name: 'UAE', flag: '🇦🇪' },
+  { code: '+65', name: 'Singapore', flag: '🇸🇬' },
+  { code: '+60', name: 'Malaysia', flag: '🇲🇾' },
+  { code: '+966', name: 'Saudi Arabia', flag: '🇸🇦' },
+  { code: '+92', name: 'Pakistan', flag: '🇵🇰' },
+  { code: '+880', name: 'Bangladesh', flag: '🇧🇩' },
+]
+
+// Trade subdomain URL
+const TRADE_URL = 'https://trade.vediex.com'
+
 // ============ AUTH MODAL ============
 const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
-  const navigate = useNavigate()
   const [mode, setMode] = useState(initialMode)
   const [showPassword, setShowPassword] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', password: '' })
+  const [showCountryDropdown, setShowCountryDropdown] = useState(false)
+  const [selectedCountry, setSelectedCountry] = useState(countries[0])
+  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' })
 
   useEffect(() => {
     if (isOpen) {
       setMode(initialMode)
-      setForm({ name: '', email: '', password: '' })
+      setForm({ name: '', email: '', phone: '', password: '' })
       setShowPassword(false)
+      setShowCountryDropdown(false)
     }
   }, [isOpen, initialMode])
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    // Redirect to trade subdomain
     if (mode === 'login') {
-      navigate('/login')
+      window.location.href = `${TRADE_URL}/user/login`
     } else {
-      navigate('/signup')
+      window.location.href = `${TRADE_URL}/user/signup`
     }
     onClose()
   }
@@ -75,53 +95,132 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'login' }) => {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-md rounded-2xl bg-[#12152B] border border-[rgba(108,92,231,0.15)] shadow-2xl overflow-hidden"
+            className="relative w-full max-w-md rounded-2xl bg-[#12152B] border border-[rgba(108,92,231,0.15)] shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto"
           >
             <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-lg text-[#8892B0] hover:text-white hover:bg-white/10 transition-colors z-10">
               <X size={18} />
             </button>
             <div className="px-8 pt-8 pb-2 text-center">
-              <img src="/logo_edited.png" alt="VEDIEX" className="h-12 w-auto mx-auto mb-6" />
-              <h2 className="text-2xl font-bold text-white mb-1">{mode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
-              <p className="text-sm text-[#8892B0]">{mode === 'login' ? 'Sign in to access your trading dashboard' : 'Join VEDIEX and start trading today'}</p>
+              <img src="/logo_edited.png" alt="VEDIEX" className="h-12 w-auto mx-auto mb-4" />
+              <p className="text-[#6C5CE7] text-sm font-medium mb-4">Markets</p>
+              {/* Tab Switcher */}
+              <div className="inline-flex bg-[#1A1D35] rounded-lg p-1 mb-4">
+                <button
+                  onClick={() => setMode('signup')}
+                  className={`px-6 py-2 text-sm font-medium rounded-md transition-all ${mode === 'signup' ? 'bg-[#2A2D45] text-white' : 'text-[#8892B0] hover:text-white'}`}
+                >
+                  Sign up
+                </button>
+                <button
+                  onClick={() => setMode('login')}
+                  className={`px-6 py-2 text-sm font-medium rounded-md transition-all ${mode === 'login' ? 'bg-[#2A2D45] text-white' : 'text-[#8892B0] hover:text-white'}`}
+                >
+                  Sign in
+                </button>
+              </div>
+              <h2 className="text-xl font-bold text-white mb-1">{mode === 'login' ? 'Welcome back' : 'Create an account'}</h2>
             </div>
-            <form onSubmit={handleSubmit} className="px-8 py-6 space-y-4">
+            <form onSubmit={handleSubmit} className="px-8 py-4 space-y-4">
               {mode === 'signup' && (
-                <div>
-                  <label className="block text-xs font-medium text-[#8892B0] mb-1.5">Full Name</label>
-                  <div className="relative">
-                    <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8892B0]" />
-                    <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Enter your name" required className="w-full pl-10 pr-4 py-3 text-sm text-white bg-[#1A1D35] border border-[rgba(108,92,231,0.15)] rounded-xl placeholder:text-[#8892B0]/50 focus:outline-none focus:border-[#6C5CE7]/50" />
+                <>
+                  {/* Full Name */}
+                  <div>
+                    <input 
+                      type="text" 
+                      value={form.name} 
+                      onChange={(e) => setForm({ ...form, name: e.target.value })} 
+                      placeholder="Enter your name" 
+                      required 
+                      className="w-full px-4 py-3 text-sm text-white bg-[#1A1D35] border border-[rgba(108,92,231,0.15)] rounded-xl placeholder:text-[#8892B0]/50 focus:outline-none focus:border-[#6C5CE7]/50" 
+                    />
                   </div>
-                </div>
+                  {/* Email */}
+                  <div className="relative">
+                    <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8892B0]" />
+                    <input 
+                      type="email" 
+                      value={form.email} 
+                      onChange={(e) => setForm({ ...form, email: e.target.value })} 
+                      placeholder="Enter your email" 
+                      required 
+                      className="w-full pl-10 pr-4 py-3 text-sm text-white bg-[#1A1D35] border border-[rgba(108,92,231,0.15)] rounded-xl placeholder:text-[#8892B0]/50 focus:outline-none focus:border-[#6C5CE7]/50" 
+                    />
+                  </div>
+                  {/* Phone with Country Code */}
+                  <div className="flex gap-2">
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+                        className="flex items-center gap-1 px-3 py-3 text-sm text-white bg-[#1A1D35] border border-[rgba(108,92,231,0.15)] rounded-xl hover:border-[#6C5CE7]/50"
+                      >
+                        <span>{selectedCountry.flag}</span>
+                        <span>{selectedCountry.code}</span>
+                        <ChevronDown size={14} className="text-[#8892B0]" />
+                      </button>
+                      {showCountryDropdown && (
+                        <div className="absolute top-full left-0 mt-1 w-48 bg-[#1A1D35] border border-[rgba(108,92,231,0.15)] rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto">
+                          {countries.map((country) => (
+                            <button
+                              key={country.code + country.name}
+                              type="button"
+                              onClick={() => { setSelectedCountry(country); setShowCountryDropdown(false) }}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-[#6C5CE7]/20 transition-colors"
+                            >
+                              <span>{country.flag}</span>
+                              <span>{country.code}</span>
+                              <span className="text-[#8892B0] text-xs">{country.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <input 
+                      type="tel" 
+                      value={form.phone} 
+                      onChange={(e) => setForm({ ...form, phone: e.target.value })} 
+                      placeholder="Enter phone number" 
+                      required 
+                      className="flex-1 px-4 py-3 text-sm text-white bg-[#1A1D35] border border-[rgba(108,92,231,0.15)] rounded-xl placeholder:text-[#8892B0]/50 focus:outline-none focus:border-[#6C5CE7]/50" 
+                    />
+                  </div>
+                </>
               )}
-              <div>
-                <label className="block text-xs font-medium text-[#8892B0] mb-1.5">Email Address</label>
+              {mode === 'login' && (
                 <div className="relative">
                   <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8892B0]" />
-                  <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Enter your email" required className="w-full pl-10 pr-4 py-3 text-sm text-white bg-[#1A1D35] border border-[rgba(108,92,231,0.15)] rounded-xl placeholder:text-[#8892B0]/50 focus:outline-none focus:border-[#6C5CE7]/50" />
+                  <input 
+                    type="email" 
+                    value={form.email} 
+                    onChange={(e) => setForm({ ...form, email: e.target.value })} 
+                    placeholder="Enter your email" 
+                    required 
+                    className="w-full pl-10 pr-4 py-3 text-sm text-white bg-[#1A1D35] border border-[rgba(108,92,231,0.15)] rounded-xl placeholder:text-[#8892B0]/50 focus:outline-none focus:border-[#6C5CE7]/50" 
+                  />
                 </div>
+              )}
+              {/* Password */}
+              <div className="relative">
+                <input 
+                  type={showPassword ? 'text' : 'password'} 
+                  value={form.password} 
+                  onChange={(e) => setForm({ ...form, password: e.target.value })} 
+                  placeholder={mode === 'signup' ? 'Create password' : 'Enter your password'} 
+                  required 
+                  className="w-full px-4 pr-11 py-3 text-sm text-white bg-[#1A1D35] border border-[rgba(108,92,231,0.15)] rounded-xl placeholder:text-[#8892B0]/50 focus:outline-none focus:border-[#6C5CE7]/50" 
+                />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#8892B0] hover:text-white">
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-[#8892B0] mb-1.5">Password</label>
-                <div className="relative">
-                  <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8892B0]" />
-                  <input type={showPassword ? 'text' : 'password'} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Enter your password" required className="w-full pl-10 pr-11 py-3 text-sm text-white bg-[#1A1D35] border border-[rgba(108,92,231,0.15)] rounded-xl placeholder:text-[#8892B0]/50 focus:outline-none focus:border-[#6C5CE7]/50" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#8892B0] hover:text-white">
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
-              <button type="submit" className="w-full py-3 text-sm font-semibold text-white bg-gradient-to-r from-[#6C5CE7] to-[#A29BFE] rounded-xl hover:shadow-lg hover:shadow-[#6C5CE7]/25 transition-all">
-                {mode === 'login' ? 'Sign In' : 'Create Account'}
+              <button type="submit" className="w-full py-3 text-sm font-semibold text-black bg-white rounded-xl hover:bg-gray-100 transition-all">
+                {mode === 'login' ? 'Sign In' : 'Create an account'}
               </button>
             </form>
-            <div className="px-8 pb-8 text-center">
-              <p className="text-sm text-[#8892B0]">
-                {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
-                <button onClick={() => setMode(mode === 'login' ? 'signup' : 'login')} className="text-[#A29BFE] hover:text-white font-medium">
-                  {mode === 'login' ? 'Sign Up' : 'Sign In'}
-                </button>
+            <div className="px-8 pb-6 text-center">
+              <p className="text-xs text-[#8892B0]">
+                By creating an account, you agree to our{' '}
+                <a href="/terms-of-service" className="text-[#A29BFE] hover:text-white">Terms & Service</a>
               </p>
             </div>
           </motion.div>
