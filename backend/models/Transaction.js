@@ -109,6 +109,27 @@ const transactionSchema = new mongoose.Schema({
   bonusId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Bonus'
+  },
+  // Currency conversion fields (for Token/Crypto deposits)
+  localAmount: {
+    type: Number,
+    default: null
+  },
+  currency: {
+    type: String,
+    default: 'USD'
+  },
+  currencySymbol: {
+    type: String,
+    default: '$'
+  },
+  exchangeRate: {
+    type: Number,
+    default: 1
+  },
+  note: {
+    type: String,
+    default: ''
   }
 }, { timestamps: true })
 
