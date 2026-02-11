@@ -362,7 +362,6 @@ const Dashboard = () => {
         {/* Logo */}
         <div className="p-4 flex flex-col items-center justify-center shrink-0">
           <img src={logoImage} alt="Vediex" className="h-12 w-auto object-contain" />
-          <span className="text-white text-xs font-semibold mt-1">Markets</span>
         </div>
 
         {/* Menu */}

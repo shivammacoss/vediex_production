@@ -54,7 +54,6 @@ const EmployeeLogin = () => {
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <img src={logoImage} alt="Vediex" className="h-24 w-auto object-contain" />
-          <span className="text-white text-lg font-semibold mt-1">Markets</span>
         </div>
 
         {/* Login Type Toggle */}

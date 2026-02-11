@@ -52,7 +52,6 @@ const Navbar = () => {
                 alt="Vediex Logo" 
                 className="h-14 md:h-16 w-auto object-contain"
               />
-              <span className="text-white text-sm md:text-base font-semibold -mt-1">Markets</span>
             </a>
           </div>
 
@@ -107,7 +106,6 @@ const Navbar = () => {
             {/* Logo in mobile menu */}
             <div className="flex flex-col items-center mb-6">
               <img src={logoImage} alt="Vediex" className="h-16 w-auto object-contain" />
-              <span className="text-white text-base font-semibold mt-1">Markets</span>
             </div>
             <div className="flex flex-col gap-4">
               {menuItems.map((item) => (
