@@ -4,6 +4,7 @@ import LPTrade from '../models/LPTrade.js'
 import LPConfig from '../models/LPConfig.js'
 import BookAuditLog from '../models/BookAuditLog.js'
 import User from '../models/User.js'
+import Admin from '../models/Admin.js'
 import lpService from '../services/lpService.js'
 
 const router = express.Router()
@@ -16,8 +17,8 @@ const verifySuperAdmin = async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'Admin ID required' })
     }
 
-    const admin = await User.findById(adminId)
-    if (!admin || admin.role !== 'superadmin') {
+    const admin = await Admin.findById(adminId)
+    if (!admin || admin.role !== 'SUPER_ADMIN') {
       return res.status(403).json({ success: false, message: 'Superadmin access required' })
     }
 
