@@ -61,6 +61,7 @@ const AdminLayout = ({ children, title, subtitle }) => {
     { name: 'Email Templates', icon: Mail, path: '/admin/email-templates', sidebarKey: 'emailTemplates' },
     { name: 'Bonus Management', icon: Gift, path: '/admin/bonus-management', sidebarKey: 'bonusManagement' },
     { name: 'Banner Management', icon: Image, path: '/admin/banners', sidebarKey: 'bonusManagement' },
+    { name: 'Book Management', icon: TrendingUp, path: '/admin/book-management', sidebarKey: 'bookManagement' },
     { name: 'Employee Management', icon: Shield, path: '/admin/admin-management', sidebarKey: 'employeeManagement' },
     { name: 'KYC Verification', icon: FileCheck, path: '/admin/kyc', sidebarKey: 'kycVerification' },
     { name: 'Support Tickets', icon: HeadphonesIcon, path: '/admin/support', sidebarKey: 'supportTickets' },

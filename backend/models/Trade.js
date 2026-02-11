@@ -143,6 +143,34 @@ const tradeSchema = new mongoose.Schema({
   adminModifiedAt: {
     type: Date,
     default: null
+  },
+  // A-Book / B-Book fields
+  bookType: {
+    type: String,
+    enum: ['UNASSIGNED', 'A_BOOK', 'B_BOOK'],
+    default: 'UNASSIGNED'
+  },
+  lpTradeId: {
+    type: String,
+    default: null
+  },
+  lpProvider: {
+    type: String,
+    default: null
+  },
+  lpStatus: {
+    type: String,
+    enum: ['NONE', 'PENDING', 'HEDGED', 'CLOSED', 'FAILED'],
+    default: 'NONE'
+  },
+  bookAssignedAt: {
+    type: Date,
+    default: null
+  },
+  bookAssignedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   }
 }, { timestamps: true })
 

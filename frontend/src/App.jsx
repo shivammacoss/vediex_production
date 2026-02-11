@@ -41,6 +41,7 @@ import BrandedSignup from './pages/BrandedSignup'
 import AdminEmailTemplates from './pages/AdminEmailTemplates'
 import AdminBonusManagement from './pages/AdminBonusManagement'
 import AdminBannerManagement from './pages/AdminBannerManagement'
+import AdminBookManagement from './pages/AdminBookManagement'
 import LandingPage from './pages/LandingPage'
 import EmployeeLogin from './pages/EmployeeLogin'
 import AdminProfile from './pages/AdminProfile'
@@ -93,6 +94,7 @@ function App() {
         <Route path="/admin/email-templates" element={<AdminEmailTemplates />} />
         <Route path="/admin/bonus-management" element={<AdminBonusManagement />} />
         <Route path="/admin/banners" element={<AdminBannerManagement />} />
+        <Route path="/admin/book-management" element={<AdminBookManagement />} />
         <Route path="/admin/profile" element={<AdminProfile />} />
         <Route path="/admin-employee" element={<EmployeeLogin />} />
         <Route path="/buy-challenge" element={<BuyChallengePage />} />
