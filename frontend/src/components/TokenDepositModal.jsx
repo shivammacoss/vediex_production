@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
-import { X, Copy, RefreshCw, Upload, AlertTriangle, Check, ArrowRight, Coins } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { X, Copy, RefreshCw, AlertTriangle, Check, ArrowRight, Coins } from 'lucide-react'
 import { API_URL } from '../config/api'
 
 const TokenDepositModal = ({ isOpen, onClose, user, onSuccess, tokenMethod }) => {
@@ -8,14 +8,10 @@ const TokenDepositModal = ({ isOpen, onClose, user, onSuccess, tokenMethod }) =>
   const [exchangeRate, setExchangeRate] = useState(83) // Default INR/USD rate
   const [loadingRate, setLoadingRate] = useState(false)
   const [transactionRef, setTransactionRef] = useState('')
-  const [note, setNote] = useState('')
-  const [screenshot, setScreenshot] = useState(null)
-  const [screenshotPreview, setScreenshotPreview] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [copied, setCopied] = useState('')
-  const fileInputRef = useRef(null)
 
   const MINIMUM_USD = 500
 
@@ -42,9 +38,6 @@ const TokenDepositModal = ({ isOpen, onClose, user, onSuccess, tokenMethod }) =>
       setInrAmount('')
       setUsdAmount('')
       setTransactionRef('')
-      setNote('')
-      setScreenshot(null)
-      setScreenshotPreview(null)
       setError('')
       setSuccess('')
     }
@@ -59,22 +52,6 @@ const TokenDepositModal = ({ isOpen, onClose, user, onSuccess, tokenMethod }) =>
       setUsdAmount('')
     }
   }, [inrAmount, exchangeRate])
-
-  const handleScreenshotChange = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Screenshot must be less than 5MB')
-        return
-      }
-      setScreenshot(file)
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setScreenshotPreview(reader.result)
-      }
-      reader.readAsDataURL(file)
-    }
-  }
 
   const copyToClipboard = (text, label) => {
     navigator.clipboard.writeText(text)
@@ -106,23 +83,6 @@ const TokenDepositModal = ({ isOpen, onClose, user, onSuccess, tokenMethod }) =>
     setError('')
 
     try {
-      // Upload screenshot if provided
-      let screenshotUrl = null
-      if (screenshot) {
-        const formData = new FormData()
-        formData.append('screenshot', screenshot)
-        formData.append('userId', user._id)
-        
-        const uploadRes = await fetch(`${API_URL}/upload/screenshot`, {
-          method: 'POST',
-          body: formData
-        })
-        const uploadData = await uploadRes.json()
-        if (uploadData.success) {
-          screenshotUrl = uploadData.url
-        }
-      }
-
       // Submit deposit request
       const res = await fetch(`${API_URL}/wallet/deposit`, {
         method: 'POST',
@@ -136,9 +96,7 @@ const TokenDepositModal = ({ isOpen, onClose, user, onSuccess, tokenMethod }) =>
           exchangeRate: exchangeRate,
           paymentMethod: 'Token',
           paymentMethodId: tokenMethod?._id,
-          transactionRef: transactionRef,
-          screenshotUrl: screenshotUrl,
-          note: note
+          transactionRef: transactionRef
         })
       })
 
@@ -309,57 +267,6 @@ const TokenDepositModal = ({ isOpen, onClose, user, onSuccess, tokenMethod }) =>
               placeholder="Enter transaction hash or ID"
               className="w-full bg-[#252542] border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
             />
-          </div>
-
-          {/* Note (Optional) */}
-          <div>
-            <label className="block text-gray-400 text-sm mb-2">Note (Optional)</label>
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Add a note"
-              className="w-full bg-[#252542] border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-            />
-          </div>
-
-          {/* Screenshot Upload */}
-          <div>
-            <label className="block text-gray-400 text-sm mb-2">Payment Screenshot (Optional)</label>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleScreenshotChange}
-              accept="image/*"
-              className="hidden"
-            />
-            {screenshotPreview ? (
-              <div className="relative">
-                <img 
-                  src={screenshotPreview} 
-                  alt="Screenshot" 
-                  className="w-full max-h-32 object-contain rounded-xl border border-gray-700"
-                />
-                <button
-                  onClick={() => {
-                    setScreenshot(null)
-                    setScreenshotPreview(null)
-                    if (fileInputRef.current) fileInputRef.current.value = ''
-                  }}
-                  className="absolute top-2 right-2 p-1 bg-red-500 rounded-full text-white hover:bg-red-600"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full p-4 border-2 border-dashed border-gray-700 rounded-xl hover:border-blue-500 transition-colors flex flex-col items-center gap-2"
-              >
-                <Upload size={24} className="text-gray-500" />
-                <span className="text-gray-400 text-sm">Click to upload</span>
-              </button>
-            )}
           </div>
 
           {/* Error/Success Messages */}

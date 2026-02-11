@@ -855,13 +855,11 @@ const WalletPage = () => {
                     className={`p-4 rounded-lg border transition-colors flex flex-col items-center gap-2 ${
                       selectedPaymentMethod?._id === method._id
                         ? 'border-accent-green bg-accent-green/10'
-                        : method.type === 'Token'
-                        ? 'border-yellow-500/50 bg-yellow-500/10 hover:border-yellow-500'
                         : 'border-gray-700 bg-dark-700 hover:border-gray-600'
                     }`}
                   >
                     {getPaymentIcon(method.type)}
-                    <span className={`text-sm ${method.type === 'Token' ? 'text-yellow-400' : 'text-white'}`}>{method.type}</span>
+                    <span className="text-white text-sm">{method.type}</span>
                   </button>
                 ))}
               </div>
