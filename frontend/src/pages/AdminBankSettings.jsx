@@ -14,7 +14,8 @@ import {
   Upload,
   Smartphone,
   DollarSign,
-  Percent
+  Percent,
+  Coins
 } from 'lucide-react'
 import { API_URL } from '../config/api'
 
@@ -31,6 +32,11 @@ const AdminBankSettings = () => {
     ifscCode: '',
     upiId: '',
     qrCodeImage: '',
+    tokenName: '',
+    tokenNetwork: '',
+    tokenAddress: '',
+    minimumAmount: 150,
+    require2FA: false,
     isActive: true
   })
   
@@ -365,6 +371,11 @@ const AdminBankSettings = () => {
       ifscCode: '',
       upiId: '',
       qrCodeImage: '',
+      tokenName: '',
+      tokenNetwork: '',
+      tokenAddress: '',
+      minimumAmount: 150,
+      require2FA: false,
       isActive: true
     })
   }
@@ -383,6 +394,7 @@ const AdminBankSettings = () => {
   const bankMethods = paymentMethods.filter(m => m.type === 'Bank Transfer')
   const upiMethods = paymentMethods.filter(m => m.type === 'UPI')
   const qrMethods = paymentMethods.filter(m => m.type === 'QR Code')
+  const tokenMethods = paymentMethods.filter(m => m.type === 'Token')
 
   return (
     <AdminLayout title="Bank Settings" subtitle="Manage bank accounts and payment methods">
@@ -734,6 +746,65 @@ const AdminBankSettings = () => {
             </div>
           </div>
 
+          {/* Token Methods */}
+          <div className="bg-dark-800 rounded-xl border border-gray-800 overflow-hidden mb-6">
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center">
+                  <Coins size={20} className="text-yellow-500" />
+                </div>
+                <div>
+                  <h2 className="text-white font-semibold">Token / Crypto</h2>
+                  <p className="text-gray-500 text-sm">Cryptocurrency deposit methods</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 space-y-3">
+              {tokenMethods.length === 0 ? (
+                <p className="text-gray-500 text-center py-4">No token methods added yet</p>
+              ) : (
+                tokenMethods.map((token) => (
+                  <div key={token._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-dark-700 rounded-xl border border-gray-700">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-dark-600 rounded-lg flex items-center justify-center">
+                        <Coins size={24} className="text-yellow-400" />
+                      </div>
+                      <div>
+                        <p className="text-white font-medium">{token.tokenName || 'Token'}</p>
+                        <p className="text-gray-500 text-sm">Network: {token.tokenNetwork || 'N/A'}</p>
+                        <p className="text-gray-500 text-xs font-mono truncate max-w-xs">{token.tokenAddress || 'No address'}</p>
+                        <p className="text-yellow-500 text-xs">Min: ${token.minimumAmount || 150} USD</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleStatus(token)}
+                        className={`px-3 py-1 rounded-full text-xs ${
+                          token.isActive ? 'bg-green-500/20 text-green-500' : 'bg-gray-500/20 text-gray-400'
+                        }`}
+                      >
+                        {token.isActive ? 'Active' : 'Inactive'}
+                      </button>
+                      <button 
+                        onClick={() => openEditModal(token)}
+                        className="p-2 hover:bg-dark-600 rounded-lg transition-colors text-gray-400 hover:text-white"
+                      >
+                        <Edit size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(token._id)}
+                        className="p-2 hover:bg-dark-600 rounded-lg transition-colors text-gray-400 hover:text-red-500"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
           {/* Currency Markups Section */}
           <div className="bg-dark-800 rounded-xl border border-gray-800 overflow-hidden mb-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-5 border-b border-gray-800">
@@ -967,8 +1038,8 @@ const AdminBankSettings = () => {
               {/* Type Selection */}
               <div>
                 <label className="block text-gray-400 text-sm mb-2">Payment Type</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['Bank Transfer', 'UPI', 'QR Code'].map((type) => (
+                <div className="grid grid-cols-4 gap-2">
+                  {['Bank Transfer', 'UPI', 'QR Code', 'Token'].map((type) => (
                     <button
                       key={type}
                       onClick={() => setForm({ ...form, type })}
@@ -1075,6 +1146,64 @@ const AdminBankSettings = () => {
                     )}
                   </div>
                 </div>
+              )}
+
+              {/* Token Fields */}
+              {form.type === 'Token' && (
+                <>
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-1">Token Name</label>
+                    <input
+                      type="text"
+                      value={form.tokenName}
+                      onChange={(e) => setForm({ ...form, tokenName: e.target.value })}
+                      placeholder="e.g., USDT, BTC, ETH"
+                      className="w-full px-3 py-2 bg-dark-700 border border-gray-700 rounded-lg text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-1">Network</label>
+                    <input
+                      type="text"
+                      value={form.tokenNetwork}
+                      onChange={(e) => setForm({ ...form, tokenNetwork: e.target.value })}
+                      placeholder="e.g., TRC20, ERC20, BEP20"
+                      className="w-full px-3 py-2 bg-dark-700 border border-gray-700 rounded-lg text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-1">Wallet Address</label>
+                    <input
+                      type="text"
+                      value={form.tokenAddress}
+                      onChange={(e) => setForm({ ...form, tokenAddress: e.target.value })}
+                      placeholder="Enter wallet address"
+                      className="w-full px-3 py-2 bg-dark-700 border border-gray-700 rounded-lg text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-1">Minimum Amount (USD)</label>
+                    <input
+                      type="number"
+                      value={form.minimumAmount}
+                      onChange={(e) => setForm({ ...form, minimumAmount: parseFloat(e.target.value) || 150 })}
+                      placeholder="150"
+                      className="w-full px-3 py-2 bg-dark-700 border border-gray-700 rounded-lg text-white"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-dark-700 rounded-lg">
+                    <input
+                      type="checkbox"
+                      id="require2FA"
+                      checked={form.require2FA}
+                      onChange={(e) => setForm({ ...form, require2FA: e.target.checked })}
+                      className="w-4 h-4 rounded"
+                    />
+                    <label htmlFor="require2FA" className="text-gray-400 text-sm">
+                      Require Google 2FA for withdrawals
+                    </label>
+                  </div>
+                </>
               )}
 
               {/* Active Status */}
