@@ -37,6 +37,8 @@ import {
 import { useTheme } from '../context/ThemeContext'
 import { API_URL } from '../config/api'
 import logoImage from '../assets/Vediex.png'
+import TokenDepositModal from '../components/TokenDepositModal'
+import TokenWithdrawModal from '../components/TokenWithdrawModal'
 
 const WalletPage = () => {
   const navigate = useNavigate()
@@ -66,6 +68,9 @@ const WalletPage = () => {
   const [selectedBankAccount, setSelectedBankAccount] = useState(null)
   const [bonusInfo, setBonusInfo] = useState(null)
   const [calculatingBonus, setCalculatingBonus] = useState(false)
+  const [showTokenDepositModal, setShowTokenDepositModal] = useState(false)
+  const [showTokenWithdrawModal, setShowTokenWithdrawModal] = useState(false)
+  const [selectedTokenMethod, setSelectedTokenMethod] = useState(null)
   const fileInputRef = useRef(null)
 
   const user = JSON.parse(localStorage.getItem('user') || '{}')
@@ -837,15 +842,26 @@ const WalletPage = () => {
                 {paymentMethods.map((method) => (
                   <button
                     key={method._id}
-                    onClick={() => setSelectedPaymentMethod(method)}
+                    onClick={() => {
+                      if (method.type === 'Token') {
+                        // Open dedicated Token deposit modal
+                        setSelectedTokenMethod(method)
+                        setShowDepositModal(false)
+                        setShowTokenDepositModal(true)
+                      } else {
+                        setSelectedPaymentMethod(method)
+                      }
+                    }}
                     className={`p-4 rounded-lg border transition-colors flex flex-col items-center gap-2 ${
                       selectedPaymentMethod?._id === method._id
                         ? 'border-accent-green bg-accent-green/10'
+                        : method.type === 'Token'
+                        ? 'border-yellow-500/50 bg-yellow-500/10 hover:border-yellow-500'
                         : 'border-gray-700 bg-dark-700 hover:border-gray-600'
                     }`}
                   >
                     {getPaymentIcon(method.type)}
-                    <span className="text-white text-sm">{method.type}</span>
+                    <span className={`text-sm ${method.type === 'Token' ? 'text-yellow-400' : 'text-white'}`}>{method.type}</span>
                   </button>
                 ))}
               </div>
@@ -1024,8 +1040,20 @@ const WalletPage = () => {
               <p className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>${wallet?.balance?.toLocaleString() || '0.00'}</p>
             </div>
 
+            {/* Token Withdraw Option */}
+            <button
+              onClick={() => {
+                setShowWithdrawModal(false)
+                setShowTokenWithdrawModal(true)
+              }}
+              className="w-full mb-4 p-3 bg-yellow-500/10 border border-yellow-500/50 rounded-lg hover:bg-yellow-500/20 transition-colors flex items-center justify-center gap-2"
+            >
+              <Coins size={18} className="text-yellow-400" />
+              <span className="text-yellow-400 font-medium">Withdraw via Token/Crypto</span>
+            </button>
+
             <div className="mb-4">
-              <label className="block text-gray-400 text-sm mb-2">Amount</label>
+              <label className="block text-gray-400 text-sm mb-2">Amount (USD)</label>
               <input
                 type="number"
                 value={amount}
@@ -1105,6 +1133,33 @@ const WalletPage = () => {
           </div>
         </div>
       )}
+
+      {/* Token Deposit Modal */}
+      <TokenDepositModal
+        isOpen={showTokenDepositModal}
+        onClose={() => {
+          setShowTokenDepositModal(false)
+          setSelectedTokenMethod(null)
+        }}
+        user={{ ...user, wallet }}
+        onSuccess={() => {
+          fetchWallet()
+          fetchTransactions()
+        }}
+        tokenMethod={selectedTokenMethod}
+      />
+
+      {/* Token Withdraw Modal */}
+      <TokenWithdrawModal
+        isOpen={showTokenWithdrawModal}
+        onClose={() => setShowTokenWithdrawModal(false)}
+        user={user}
+        wallet={wallet}
+        onSuccess={() => {
+          fetchWallet()
+          fetchTransactions()
+        }}
+      />
     </div>
   )
 }

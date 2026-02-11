@@ -39,6 +39,41 @@ function getDefaultInstruments() {
   ]
 }
 
+// GET /api/prices/exchange-rate/usd-inr - Get live USD/INR exchange rate
+router.get('/exchange-rate/usd-inr', async (req, res) => {
+  try {
+    // Try to fetch live rate from external API
+    let rate = 83 // Default fallback rate
+    
+    try {
+      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD')
+      const data = await response.json()
+      if (data && data.rates && data.rates.INR) {
+        rate = data.rates.INR
+      }
+    } catch (apiError) {
+      console.log('[Exchange Rate] Using fallback rate:', rate)
+    }
+
+    res.json({
+      success: true,
+      rate: rate,
+      currency: 'INR',
+      base: 'USD',
+      timestamp: Date.now()
+    })
+  } catch (error) {
+    console.error('Exchange rate error:', error)
+    res.json({
+      success: true,
+      rate: 83, // Fallback
+      currency: 'INR',
+      base: 'USD',
+      timestamp: Date.now()
+    })
+  }
+})
+
 // GET /api/prices/instruments - Get all available instruments (only those with live prices)
 router.get('/instruments', async (req, res) => {
   try {
