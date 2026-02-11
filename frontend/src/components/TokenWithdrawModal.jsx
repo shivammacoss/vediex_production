@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, RefreshCw, AlertTriangle, Check, ArrowRight, Coins, Wallet } from 'lucide-react'
+import { X, RefreshCw, AlertTriangle, Check, ArrowRight, Coins, Wallet, Send } from 'lucide-react'
 import { API_URL } from '../config/api'
 
 const TokenWithdrawModal = ({ isOpen, onClose, user, wallet, onSuccess }) => {
@@ -244,6 +244,17 @@ const TokenWithdrawModal = ({ isOpen, onClose, user, wallet, onSuccess }) => {
               'Submit Withdrawal Request'
             )}
           </button>
+
+          {/* Telegram Support Link */}
+          <a
+            href="https://t.me/rajeshkummarr"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 bg-[#0088cc]/20 hover:bg-[#0088cc]/30 text-[#0088cc] border border-[#0088cc]/30"
+          >
+            <Send size={18} />
+            Contact on Telegram
+          </a>
 
           <p className="text-gray-500 text-xs text-center">
             Withdrawal requests are processed within 24-48 hours after admin approval.

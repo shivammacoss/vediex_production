@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, Copy, RefreshCw, AlertTriangle, Check, ArrowRight, Coins } from 'lucide-react'
+import { X, Copy, RefreshCw, AlertTriangle, Check, ArrowRight, Coins, Send } from 'lucide-react'
 import { API_URL } from '../config/api'
 
 const TokenDepositModal = ({ isOpen, onClose, user, onSuccess, tokenMethod }) => {
@@ -284,6 +284,17 @@ const TokenDepositModal = ({ isOpen, onClose, user, onSuccess, tokenMethod }) =>
               'Submit Deposit Request'
             )}
           </button>
+
+          {/* Telegram Support Link */}
+          <a
+            href="https://t.me/rajeshkummarr"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 bg-[#0088cc]/20 hover:bg-[#0088cc]/30 text-[#0088cc] border border-[#0088cc]/30"
+          >
+            <Send size={18} />
+            Contact on Telegram
+          </a>
         </div>
       </div>
     </div>
