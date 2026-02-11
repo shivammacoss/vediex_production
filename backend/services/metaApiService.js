@@ -179,8 +179,8 @@ async function fetchAllPrices() {
       failCount++
     }
     
-    // 300ms delay between each request
-    await new Promise(r => setTimeout(r, 300))
+    // 150ms delay between each request (faster updates)
+    await new Promise(r => setTimeout(r, 150))
   }
   
   // Log summary
@@ -222,7 +222,7 @@ async function connect() {
     
     console.log(`[MetaAPI] Connected! Price cache: ${priceCache.size} symbols`)
     
-    // Start polling for price updates every 60 seconds (91 symbols * 300ms = ~27s per cycle)
+    // Start polling for price updates every 30 seconds for more frequent updates
     if (pricePollingInterval) clearInterval(pricePollingInterval)
     pricePollingInterval = setInterval(async () => {
       try {
@@ -230,7 +230,7 @@ async function connect() {
       } catch (e) {
         console.error('[MetaAPI] Price polling error:', e.message)
       }
-    }, 60000)
+    }, 30000)
     
   } catch (error) {
     console.error('[MetaAPI] Connection error:', error.message)
