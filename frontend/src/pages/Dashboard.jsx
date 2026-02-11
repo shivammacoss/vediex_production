@@ -478,18 +478,6 @@ const Dashboard = () => {
               <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{totalTrades.toLocaleString()}</p>
             </div>
 
-            {/* Total Charges Box */}
-            <div className={`rounded-xl p-5 border ${isDarkMode ? 'bg-dark-800 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
-                  <DollarSign size={20} className="text-orange-500" />
-                </div>
-                <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>Fees & Swap</span>
-              </div>
-              <p className={`text-sm mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>Total Charges</p>
-              <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>${totalCharges.toFixed(2)}</p>
-            </div>
-
             {/* Total PnL Box */}
             <div className={`rounded-xl p-5 border ${isDarkMode ? 'bg-dark-800 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
               <div className="flex items-center justify-between mb-3">
