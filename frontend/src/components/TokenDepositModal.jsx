@@ -7,7 +7,6 @@ const TokenDepositModal = ({ isOpen, onClose, user, onSuccess, tokenMethod }) =>
   const [usdAmount, setUsdAmount] = useState('')
   const [exchangeRate, setExchangeRate] = useState(83) // Default INR/USD rate
   const [loadingRate, setLoadingRate] = useState(false)
-  const [transactionRef, setTransactionRef] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -37,7 +36,6 @@ const TokenDepositModal = ({ isOpen, onClose, user, onSuccess, tokenMethod }) =>
       // Reset form
       setInrAmount('')
       setUsdAmount('')
-      setTransactionRef('')
       setError('')
       setSuccess('')
     }
@@ -64,8 +62,7 @@ const TokenDepositModal = ({ isOpen, onClose, user, onSuccess, tokenMethod }) =>
     return (
       inrAmount &&
       parseFloat(inrAmount) > 0 &&
-      usd >= MINIMUM_USD &&
-      transactionRef.trim() !== ''
+      usd >= MINIMUM_USD
     )
   }
 
@@ -73,8 +70,6 @@ const TokenDepositModal = ({ isOpen, onClose, user, onSuccess, tokenMethod }) =>
     if (!isValid()) {
       if (parseFloat(usdAmount) < MINIMUM_USD) {
         setError(`Minimum deposit is $${MINIMUM_USD} USD`)
-      } else if (!transactionRef.trim()) {
-        setError('Transaction ID is required')
       }
       return
     }
@@ -96,7 +91,7 @@ const TokenDepositModal = ({ isOpen, onClose, user, onSuccess, tokenMethod }) =>
           exchangeRate: exchangeRate,
           paymentMethod: 'Token',
           paymentMethodId: tokenMethod?._id,
-          transactionRef: transactionRef
+          transactionRef: ''
         })
       })
 
@@ -255,18 +250,6 @@ const TokenDepositModal = ({ isOpen, onClose, user, onSuccess, tokenMethod }) =>
                 <p className="text-red-400 text-sm">Minimum deposit is ${MINIMUM_USD} USD</p>
               </div>
             )}
-          </div>
-
-          {/* Transaction Reference */}
-          <div>
-            <label className="block text-gray-400 text-sm mb-2">Transaction ID / Hash *</label>
-            <input
-              type="text"
-              value={transactionRef}
-              onChange={(e) => setTransactionRef(e.target.value)}
-              placeholder="Enter transaction hash or ID"
-              className="w-full bg-[#252542] border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-            />
           </div>
 
           {/* Error/Success Messages */}
