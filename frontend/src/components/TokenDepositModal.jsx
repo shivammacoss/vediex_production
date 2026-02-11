@@ -143,8 +143,6 @@ const TokenDepositModal = ({ isOpen, onClose, user, onSuccess, tokenMethod }) =>
           {/* Token Details */}
           {tokenMethod && (
             <div className="bg-[#252542] rounded-xl p-4 space-y-3">
-              <h3 className="text-gray-400 text-sm font-medium mb-3">Send tokens to this address:</h3>
-              
               {tokenMethod.tokenName && (
                 <div 
                   className="flex items-center justify-between p-2 hover:bg-[#1a1a2e] rounded-lg cursor-pointer transition-colors"
