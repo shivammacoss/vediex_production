@@ -134,8 +134,8 @@ const TokenDepositModal = ({ isOpen, onClose, user, onSuccess, tokenMethod }) =>
           currency: 'INR',
           currencySymbol: '₹',
           exchangeRate: exchangeRate,
-          paymentMethod: tokenMethod?._id,
-          paymentMethodType: 'Token',
+          paymentMethod: 'Token',
+          paymentMethodId: tokenMethod?._id,
           transactionRef: transactionRef,
           screenshotUrl: screenshotUrl,
           note: note

@@ -22,7 +22,7 @@ const transactionSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['Bank Transfer', 'UPI', 'QR Code', 'Internal', 'System', 'Wallet'],
+    enum: ['Bank Transfer', 'UPI', 'QR Code', 'Token', 'Internal', 'System', 'Wallet'],
     default: 'Internal'
   },
   description: {
