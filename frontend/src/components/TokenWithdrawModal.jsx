@@ -7,10 +7,6 @@ const TokenWithdrawModal = ({ isOpen, onClose, user, wallet, onSuccess }) => {
   const [usdAmount, setUsdAmount] = useState('')
   const [exchangeRate, setExchangeRate] = useState(83)
   const [loadingRate, setLoadingRate] = useState(false)
-  const [walletAddress, setWalletAddress] = useState('')
-  const [network, setNetwork] = useState('')
-  const [note, setNote] = useState('')
-  const [twoFACode, setTwoFACode] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -39,10 +35,6 @@ const TokenWithdrawModal = ({ isOpen, onClose, user, wallet, onSuccess }) => {
       fetchExchangeRate()
       setInrAmount('')
       setUsdAmount('')
-      setWalletAddress('')
-      setNetwork('')
-      setNote('')
-      setTwoFACode('')
       setError('')
       setSuccess('')
     }
@@ -64,9 +56,7 @@ const TokenWithdrawModal = ({ isOpen, onClose, user, wallet, onSuccess }) => {
       inrAmount &&
       parseFloat(inrAmount) > 0 &&
       usd >= MINIMUM_USD &&
-      usd <= availableBalance &&
-      walletAddress.trim() !== '' &&
-      network.trim() !== ''
+      usd <= availableBalance
     )
   }
 
@@ -75,8 +65,6 @@ const TokenWithdrawModal = ({ isOpen, onClose, user, wallet, onSuccess }) => {
     if (!inrAmount || parseFloat(inrAmount) <= 0) return null
     if (usd < MINIMUM_USD) return `Minimum withdrawal is $${MINIMUM_USD} USD`
     if (usd > availableBalance) return `Insufficient balance. Available: $${availableBalance.toFixed(2)}`
-    if (!walletAddress.trim()) return 'Wallet address is required'
-    if (!network.trim()) return 'Network is required'
     return null
   }
 
@@ -101,10 +89,10 @@ const TokenWithdrawModal = ({ isOpen, onClose, user, wallet, onSuccess }) => {
           currency: 'INR',
           exchangeRate: exchangeRate,
           withdrawMethod: 'Token',
-          walletAddress: walletAddress,
-          network: network,
-          note: note,
-          twoFACode: twoFACode || null
+          walletAddress: '',
+          network: '',
+          note: '',
+          twoFACode: null
         })
       })
 
@@ -222,60 +210,6 @@ const TokenWithdrawModal = ({ isOpen, onClose, user, wallet, onSuccess }) => {
                 <p className="text-red-400 text-sm">{getValidationError()}</p>
               </div>
             )}
-          </div>
-
-          {/* Wallet Address */}
-          <div>
-            <label className="block text-gray-400 text-sm mb-2">Your Wallet Address *</label>
-            <input
-              type="text"
-              value={walletAddress}
-              onChange={(e) => setWalletAddress(e.target.value)}
-              placeholder="Enter your wallet address"
-              className="w-full bg-[#252542] border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 font-mono text-sm"
-            />
-          </div>
-
-          {/* Network */}
-          <div>
-            <label className="block text-gray-400 text-sm mb-2">Network *</label>
-            <select
-              value={network}
-              onChange={(e) => setNetwork(e.target.value)}
-              className="w-full bg-[#252542] border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500"
-            >
-              <option value="">Select Network</option>
-              <option value="TRC20">TRC20 (Tron)</option>
-              <option value="ERC20">ERC20 (Ethereum)</option>
-              <option value="BEP20">BEP20 (BSC)</option>
-              <option value="Polygon">Polygon</option>
-              <option value="Solana">Solana</option>
-            </select>
-          </div>
-
-          {/* Note */}
-          <div>
-            <label className="block text-gray-400 text-sm mb-2">Note (Optional)</label>
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Add a note"
-              className="w-full bg-[#252542] border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-            />
-          </div>
-
-          {/* 2FA Code (Optional) */}
-          <div>
-            <label className="block text-gray-400 text-sm mb-2">Google 2FA Code (if enabled)</label>
-            <input
-              type="text"
-              value={twoFACode}
-              onChange={(e) => setTwoFACode(e.target.value)}
-              placeholder="Enter 6-digit code"
-              maxLength={6}
-              className="w-full bg-[#252542] border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 text-center tracking-widest"
-            />
           </div>
 
           {/* Error/Success Messages */}
