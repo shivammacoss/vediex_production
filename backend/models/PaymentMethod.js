@@ -39,7 +39,7 @@ const paymentMethodSchema = new mongoose.Schema({
   },
   minimumAmount: {
     type: Number,
-    default: 150
+    default: 500
   },
   require2FA: {
     type: Boolean,

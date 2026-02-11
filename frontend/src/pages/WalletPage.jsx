@@ -281,6 +281,10 @@ const WalletPage = () => {
       setError('Please select a payment method')
       return
     }
+    if (!transactionRef || transactionRef.trim() === '') {
+      setError('Please enter a transaction ID or reference')
+      return
+    }
 
     // Calculate USD amount from local currency
     const usdAmount = selectedCurrency && selectedCurrency.currency !== 'USD'
@@ -883,9 +887,7 @@ const WalletPage = () => {
                 )}
                 {selectedPaymentMethod.type === 'Token' && (
                   <div className="space-y-2 text-sm">
-                    {selectedPaymentMethod.minimumAmount && (
-                      <p className="text-pink-500 font-medium mb-3">Note: Minimum {selectedPaymentMethod.minimumAmount} USD</p>
-                    )}
+                    <p className="text-pink-500 font-medium mb-3">Note: Minimum 500 USD</p>
                     {selectedPaymentMethod.tokenName && (
                       <p className="text-gray-400 flex items-center justify-between cursor-pointer hover:bg-dark-600 p-1 rounded" onClick={() => { navigator.clipboard.writeText(selectedPaymentMethod.tokenName); setSuccess('Token name copied!'); setTimeout(() => setSuccess(''), 2000); }}>
                         Token: <span className="text-white">{selectedPaymentMethod.tokenName}</span>
@@ -910,13 +912,14 @@ const WalletPage = () => {
             )}
 
             <div className="mb-4">
-              <label className="block text-gray-400 text-sm mb-2">Transaction Reference (Optional)</label>
+              <label className="block text-gray-400 text-sm mb-2">Transaction Reference / Transaction ID *</label>
               <input
                 type="text"
                 value={transactionRef}
                 onChange={(e) => setTransactionRef(e.target.value)}
-                placeholder="Enter transaction ID or reference"
+                placeholder="Enter transaction ID or reference (Required)"
                 className={`w-full rounded-lg px-4 py-3 placeholder-gray-500 focus:outline-none focus:border-accent-green border ${isDarkMode ? 'bg-dark-700 border-gray-700 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'}`}
+                required
               />
             </div>
 

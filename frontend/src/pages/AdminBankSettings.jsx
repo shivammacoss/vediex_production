@@ -35,7 +35,7 @@ const AdminBankSettings = () => {
     tokenName: '',
     tokenNetwork: '',
     tokenAddress: '',
-    minimumAmount: 150,
+    minimumAmount: 500,
     require2FA: false,
     isActive: true
   })
@@ -374,7 +374,7 @@ const AdminBankSettings = () => {
       tokenName: '',
       tokenNetwork: '',
       tokenAddress: '',
-      minimumAmount: 150,
+      minimumAmount: 500,
       require2FA: false,
       isActive: true
     })
