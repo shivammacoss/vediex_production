@@ -493,6 +493,20 @@ const Dashboard = () => {
                 {totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}
               </p>
             </div>
+
+            {/* Challenge Accounts Box */}
+            <div className={`rounded-xl p-5 border ${isDarkMode ? 'bg-dark-800 border-gray-800' : 'bg-white border-gray-200 shadow-sm'}`}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center">
+                  <Trophy size={20} className="text-yellow-500" />
+                </div>
+                <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>Active</span>
+              </div>
+              <p className={`text-sm mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>Challenge Accounts</p>
+              <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                {userAccounts.filter(acc => acc.accountType === 'CHALLENGE').length}
+              </p>
+            </div>
           </div>
 
           {/* Forex Heatmap */}
