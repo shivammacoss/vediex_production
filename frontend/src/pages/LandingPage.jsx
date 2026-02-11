@@ -104,6 +104,11 @@ const Navbar = () => {
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-[99] bg-black/95 backdrop-blur-lg md:hidden pt-[70px]">
           <div className="flex flex-col h-full px-6 py-8">
+            {/* Logo in mobile menu */}
+            <div className="flex flex-col items-center mb-6">
+              <img src={logoImage} alt="Vediex" className="h-16 w-auto object-contain" />
+              <span className="text-white text-base font-semibold mt-1">Markets</span>
+            </div>
             <div className="flex flex-col gap-4">
               {menuItems.map((item) => (
                 <a
