@@ -300,7 +300,7 @@ const PerpetualFutures = () => {
           {[
             { icon: TrendingUp, label: 'Long Positions', value: 'Go Long', desc: 'Profit from price increases', color: 'text-[#00B894]' },
             { icon: TrendingDown, label: 'Short Positions', value: 'Go Short', desc: 'Profit from price decreases', color: 'text-red-400' },
-            { icon: Gauge, label: 'Leverage', value: 'Up to 100x', desc: 'Amplify your positions', color: 'text-[#A29BFE]' },
+            { icon: Gauge, label: 'Leverage', value: 'Up to 2000x', desc: 'Amplify your positions', color: 'text-[#A29BFE]' },
             { icon: Shield, label: 'Risk Management', value: 'Advanced Tools', desc: 'Stop-loss & take-profit', color: 'text-[#00D2FF]' },
           ].map((item) => {
             const Icon = item.icon
