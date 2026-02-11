@@ -4,7 +4,7 @@ import {
   Menu, X, BarChart3, Bitcoin, TrendingUp, TrendingDown,
   Coins, Star, ArrowRight, LineChart, PieChart, Globe, Zap, DollarSign,
   Activity, Gauge, Shield, Lightbulb, Rocket, Building2, BookOpen, Users, HelpCircle,
-  MessageCircle, FileQuestion, Instagram, Facebook, Github, KeyRound, Fingerprint, Server, Lock
+  MessageCircle, FileQuestion, Instagram, Facebook, Github, KeyRound, Fingerprint, Server, Lock, Eye
 } from 'lucide-react'
 
 // Animation hooks
