@@ -70,13 +70,19 @@ const Navbar = () => {
   const scrollTo = useCallback((e, href) => {
     e.preventDefault()
     const id = href.slice(1)
-    const el = document.getElementById(id)
-    if (el) {
-      const offset = 64
-      const top = el.getBoundingClientRect().top + window.scrollY - offset
-      window.scrollTo({ top, behavior: 'smooth' })
-    }
+    
+    // Close mobile menu first
     setMobileOpen(false)
+    
+    // Small delay to allow menu to close, then scroll
+    setTimeout(() => {
+      const el = document.getElementById(id)
+      if (el) {
+        const offset = 80 // Account for fixed navbar
+        const top = el.getBoundingClientRect().top + window.scrollY - offset
+        window.scrollTo({ top, behavior: 'smooth' })
+      }
+    }, 100)
   }, [])
 
   return (
@@ -489,16 +495,49 @@ const Support = () => {
 const Footer = () => {
   const { ref, controls } = useScrollAnimation(0.05)
   const footerLinks = {
-    Products: ['Stock Tokens', 'Crypto Spot Trading', 'Perpetual Futures', 'Staking & Earn'],
-    Markets: ['Live Prices', 'Trending Assets', 'Market Overview', 'Trading Pairs'],
-    Company: ['About VEDIEX', 'Blog & Insights', 'Careers', 'Partners'],
-    Legal: ['Terms of Service', 'Privacy Policy', 'Risk Disclosure', 'Compliance'],
+    Products: [
+      { label: 'Stock Tokens', href: '#solutions' },
+      { label: 'Crypto Spot Trading', href: '#solutions' },
+      { label: 'Perpetual Futures', href: '#solutions' },
+      { label: 'Staking & Earn', href: '#solutions' },
+    ],
+    Markets: [
+      { label: 'Live Prices', href: '#markets' },
+      { label: 'Trending Assets', href: '#markets' },
+      { label: 'Market Overview', href: '#markets' },
+      { label: 'Trading Pairs', href: `${TRADE_URL}/user/login` },
+    ],
+    Company: [
+      { label: 'About VEDIEX', href: '#company' },
+      { label: 'Blog & Insights', href: '#company' },
+      { label: 'Careers', href: '#company' },
+      { label: 'Partners', href: '#company' },
+    ],
+    Legal: [
+      { label: 'Terms of Service', href: '/terms-of-service' },
+      { label: 'Privacy Policy', href: '/privacy-policy' },
+      { label: 'Risk Disclosure', href: '/terms-of-service' },
+      { label: 'Compliance', href: '/terms-of-service' },
+    ],
   }
   const socialLinks = [
-    { icon: Instagram, label: 'Instagram', href: '#' },
-    { icon: Facebook, label: 'Facebook', href: '#' },
-    { icon: Github, label: 'GitHub', href: '#' },
+    { icon: Instagram, label: 'Instagram', href: 'https://instagram.com' },
+    { icon: Facebook, label: 'Facebook', href: 'https://facebook.com' },
+    { icon: Github, label: 'GitHub', href: 'https://github.com' },
   ]
+  
+  const handleFooterClick = (e, href) => {
+    if (href.startsWith('#')) {
+      e.preventDefault()
+      const id = href.slice(1)
+      const el = document.getElementById(id)
+      if (el) {
+        const offset = 80
+        const top = el.getBoundingClientRect().top + window.scrollY - offset
+        window.scrollTo({ top, behavior: 'smooth' })
+      }
+    }
+  }
 
   return (
     <footer className="relative pt-20 pb-8 bg-[#12152B]/80 border-t border-[rgba(108,92,231,0.15)]">
@@ -527,8 +566,8 @@ const Footer = () => {
                 <h4 className="text-sm font-semibold text-white mb-4">{category}</h4>
                 <ul className="space-y-3">
                   {links.map((link) => (
-                    <li key={link}>
-                      <a href="#" className="text-sm text-[#8892B0] hover:text-white transition-colors duration-200 cursor-pointer">{link}</a>
+                    <li key={link.label}>
+                      <a href={link.href} onClick={(e) => handleFooterClick(e, link.href)} className="text-sm text-[#8892B0] hover:text-white transition-colors duration-200 cursor-pointer">{link.label}</a>
                     </li>
                   ))}
                 </ul>
