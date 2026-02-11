@@ -29,28 +29,35 @@ let ws = null
 let reconnectTimeout = null
 let pricePollingInterval = null
 
-// Symbol lists for different asset classes
+// Symbol lists for different asset classes - Full list (89 instruments)
 const FOREX_SYMBOLS = [
   'EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'NZDUSD', 'USDCAD',
-  'EURGBP', 'EURJPY', 'GBPJPY', 'EURCHF', 'EURAUD', 'EURCAD',
-  'AUDJPY', 'CADJPY', 'CHFJPY', 'NZDJPY', 'AUDNZD', 'GBPCHF',
-  'GBPNZD', 'EURNZD', 'GBPAUD', 'GBPCAD', 'AUDCAD'
+  'EURGBP', 'EURJPY', 'GBPJPY', 'EURCHF', 'EURAUD', 'EURCAD', 'AUDCAD',
+  'AUDJPY', 'CADJPY', 'CHFJPY', 'NZDJPY', 'AUDNZD', 'CADCHF', 'GBPCHF',
+  'GBPNZD', 'EURNZD', 'NZDCAD', 'NZDCHF', 'AUDCHF', 'GBPAUD', 'GBPCAD',
+  'EURSGD', 'USDSGD', 'SGDJPY', 'USDHKD', 'USDMXN', 'USDTRY', 'USDZAR',
+  'USDPLN', 'USDSEK', 'USDNOK', 'USDDKK', 'USDCZK', 'USDHUF', 'EURSEK',
+  'EURNOK', 'EURDKK', 'EURPLN', 'EURHUF', 'EURCZK', 'EURTRY', 'EURZAR',
+  'GBPSEK', 'GBPNOK', 'CHFSEK', 'SEKJPY', 'NOKJPY', 'ZARJPY'
 ]
 
 const CRYPTO_SYMBOLS = [
-  'BTCUSD', 'ETHUSD', 'LTCUSD', 'XRPUSD'
+  'BTCUSD', 'ETHUSD', 'LTCUSD', 'XRPUSD', 'BCHUSD', 'ADAUSD', 'DOGEUSD',
+  'DOTUSD', 'LINKUSD', 'MATICUSD', 'SOLUSD', 'AVAXUSD', 'XLMUSD', 'UNIUSD',
+  'ATOMUSD', 'ETCUSD', 'FILUSD', 'VETUSD', 'NEARUSD', 'ALGOUSD'
 ]
 
 const METAL_SYMBOLS = [
-  'XAUUSD', 'XAGUSD', 'XPTUSD'
+  'XAUUSD', 'XAGUSD', 'XPTUSD', 'XPDUSD', 'XAUEUR', 'XAUAUD', 'XAUGBP',
+  'XAUCHF', 'XAUJPY', 'XAGEUR'
 ]
 
 const ENERGY_SYMBOLS = [
-  'XTIUSD', 'XBRUSD', 'XNGUSD'
+  'XTIUSD', 'XBRUSD', 'XNGUSD', 'USOIL', 'UKOIL'
 ]
 
 const INDEX_SYMBOLS = [
-  'US30', 'US500', 'USTEC', 'DE30', 'UK100'
+  'US30', 'US500', 'USTEC', 'DE30', 'UK100', 'JP225', 'AU200', 'FR40', 'EU50', 'HK50'
 ]
 
 // Rate limiting state
@@ -172,8 +179,8 @@ async function fetchAllPrices() {
       failCount++
     }
     
-    // 500ms delay between each request
-    await new Promise(r => setTimeout(r, 500))
+    // 300ms delay between each request
+    await new Promise(r => setTimeout(r, 300))
   }
   
   // Log summary
@@ -215,7 +222,7 @@ async function connect() {
     
     console.log(`[MetaAPI] Connected! Price cache: ${priceCache.size} symbols`)
     
-    // Start polling for price updates every 15 seconds (to avoid rate limiting)
+    // Start polling for price updates every 60 seconds (91 symbols * 300ms = ~27s per cycle)
     if (pricePollingInterval) clearInterval(pricePollingInterval)
     pricePollingInterval = setInterval(async () => {
       try {
@@ -223,7 +230,7 @@ async function connect() {
       } catch (e) {
         console.error('[MetaAPI] Price polling error:', e.message)
       }
-    }, 15000)
+    }, 60000)
     
   } catch (error) {
     console.error('[MetaAPI] Connection error:', error.message)
