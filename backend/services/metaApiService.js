@@ -30,26 +30,27 @@ let reconnectTimeout = null
 let pricePollingInterval = null
 
 // Symbol lists for different asset classes
-// Reduced list to avoid rate limiting - only most popular symbols
 const FOREX_SYMBOLS = [
-  'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF',
-  'EURGBP', 'EURJPY', 'GBPJPY'
+  'EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'NZDUSD', 'USDCAD',
+  'EURGBP', 'EURJPY', 'GBPJPY', 'EURCHF', 'EURAUD', 'EURCAD',
+  'AUDJPY', 'CADJPY', 'CHFJPY', 'NZDJPY', 'AUDNZD', 'GBPCHF',
+  'GBPNZD', 'EURNZD', 'GBPAUD', 'GBPCAD', 'AUDCAD'
 ]
 
 const CRYPTO_SYMBOLS = [
-  'BTCUSD', 'ETHUSD'
+  'BTCUSD', 'ETHUSD', 'LTCUSD', 'XRPUSD'
 ]
 
 const METAL_SYMBOLS = [
-  'XAUUSD', 'XAGUSD'
+  'XAUUSD', 'XAGUSD', 'XPTUSD'
 ]
 
 const ENERGY_SYMBOLS = [
-  'XTIUSD'
+  'XTIUSD', 'XBRUSD', 'XNGUSD'
 ]
 
 const INDEX_SYMBOLS = [
-  'US30', 'US500'
+  'US30', 'US500', 'USTEC', 'DE30', 'UK100'
 ]
 
 // Rate limiting state
