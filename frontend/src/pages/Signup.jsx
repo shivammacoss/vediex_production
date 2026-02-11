@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { X, Mail, ChevronDown, Search, Eye, EyeOff, RefreshCw, ArrowLeft } from 'lucide-react'
 import { signup } from '../api/auth'
 import { API_URL } from '../config/api'
-import logoImage from '../assets/Vediex.png'
+const logoImage = '/logo_edited.png'
 
 const countries = [
   { code: '+1', name: 'United States', flag: '🇺🇸' },

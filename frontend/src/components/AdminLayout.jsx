@@ -26,7 +26,7 @@ import {
   Image,
   User
 } from 'lucide-react'
-import logoImage from '../assets/Vediex.png'
+const logoImage = '/logo_edited.png'
 
 const AdminLayout = ({ children, title, subtitle }) => {
   const navigate = useNavigate()

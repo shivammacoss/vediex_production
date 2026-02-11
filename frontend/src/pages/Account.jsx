@@ -31,7 +31,7 @@ import {
 } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import { API_URL } from '../config/api'
-import logoImage from '../assets/Vediex.png'
+const logoImage = '/logo_edited.png'
 
 const Account = () => {
   const navigate = useNavigate()

@@ -30,7 +30,7 @@ import {
 import { useTheme } from '../context/ThemeContext'
 import { API_URL } from '../config/api'
 import priceStreamService from '../services/priceStream'
-import logoImage from '../assets/Vediex.png'
+const logoImage = '/logo_edited.png'
 
 const OrderBook = () => {
   const navigate = useNavigate()

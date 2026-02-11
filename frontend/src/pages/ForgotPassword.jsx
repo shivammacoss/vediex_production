@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { X, Mail, Check, AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { API_URL } from '../config/api'
-import logoImage from '../assets/Vediex.png'
+const logoImage = '/logo_edited.png'
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('')

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { X, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { API_URL } from '../config/api'
-import logoImage from '../assets/Vediex.png'
+const logoImage = '/logo_edited.png'
 
 const BrandedLogin = () => {
   const { slug } = useParams()

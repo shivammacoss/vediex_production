@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X, Mail, Lock, Eye, EyeOff, Shield, UserCog } from 'lucide-react'
 import { API_URL } from '../config/api'
-import logoImage from '../assets/Vediex.png'
+const logoImage = '/logo_edited.png'
 
 const EmployeeLogin = () => {
   const navigate = useNavigate()

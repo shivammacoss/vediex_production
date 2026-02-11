@@ -5,7 +5,7 @@ import {
   Menu, X, Download, ArrowRight, ChevronRight, Users, Award, Clock, Lock,
   DollarSign, LineChart, PieChart, Wallet, CreditCard, Headphones
 } from 'lucide-react'
-import logoImage from '../assets/Vediex.png'
+const logoImage = '/logo_edited.png'
 
 // ============ NAVBAR COMPONENT ============
 const Navbar = () => {
