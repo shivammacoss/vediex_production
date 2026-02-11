@@ -394,8 +394,9 @@ const CopyTradePage = () => {
           onMouseEnter={() => setSidebarExpanded(true)}
           onMouseLeave={() => setSidebarExpanded(false)}
         >
-          <div className="p-4 flex items-center justify-center">
-            <img src={logoImage} alt="Vediex" className="h-8 w-auto object-contain" />
+          <div className="p-4 flex flex-col items-center justify-center">
+            <img src={logoImage} alt="Vediex" className="h-12 w-auto object-contain" />
+            <span className="text-white text-xs font-semibold mt-1">Markets</span>
           </div>
           <nav className="flex-1 px-2">
             {menuItems.map((item) => (

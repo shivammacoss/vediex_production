@@ -359,9 +359,10 @@ const Dashboard = () => {
         onMouseEnter={() => setSidebarExpanded(true)}
         onMouseLeave={() => setSidebarExpanded(false)}
       >
-        {/* Logo - Icon only */}
-        <div className="p-4 flex items-center justify-center shrink-0">
-          <img src={logoImage} alt="Vediex" className="h-8 w-auto object-contain" />
+        {/* Logo */}
+        <div className="p-4 flex flex-col items-center justify-center shrink-0">
+          <img src={logoImage} alt="Vediex" className="h-12 w-auto object-contain" />
+          <span className="text-white text-xs font-semibold mt-1">Markets</span>
         </div>
 
         {/* Menu */}

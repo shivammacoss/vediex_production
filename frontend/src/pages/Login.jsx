@@ -60,8 +60,9 @@ const Login = () => {
       {/* Modal */}
       <div className="relative bg-dark-700 rounded-2xl p-8 w-full max-w-md border border-gray-800">
         {/* Logo */}
-        <div className="flex justify-center mb-6">
-          <img src={logoImage} alt="Vediex" className="h-20 w-auto object-contain" />
+        <div className="flex flex-col items-center mb-6">
+          <img src={logoImage} alt="Vediex" className="h-24 w-auto object-contain" />
+          <span className="text-white text-lg font-semibold mt-1">Markets</span>
         </div>
 
         {/* Tabs */}

@@ -46,12 +46,13 @@ const Navbar = () => {
       }`}>
         <div className="mx-auto flex h-[70px] md:h-[86px] max-w-[1440px] items-center justify-between px-4 md:px-6 xl:px-8">
           <div className="flex shrink-0 items-center">
-            <a href="/" className="flex items-center" aria-label="Vediex Home">
+            <a href="/" className="flex flex-col items-center" aria-label="Vediex Home">
               <img 
                 src={logoImage} 
                 alt="Vediex Logo" 
-                className="h-12 md:h-14 w-auto object-contain"
+                className="h-14 md:h-16 w-auto object-contain"
               />
+              <span className="text-white text-sm md:text-base font-semibold -mt-1">Markets</span>
             </a>
           </div>
 

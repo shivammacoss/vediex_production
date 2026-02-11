@@ -135,8 +135,9 @@ const AdminLayout = ({ children, title, subtitle }) => {
       >
         {/* Logo */}
         <div className="p-4 flex items-center justify-between border-b border-gray-800">
-          <div className="flex items-center gap-2">
-            <img src={logoImage} alt="Vediex" className="h-8 w-auto object-contain flex-shrink-0" />
+          <div className="flex flex-col items-center gap-1">
+            <img src={logoImage} alt="Vediex" className="h-12 w-auto object-contain flex-shrink-0" />
+            <span className="text-white text-xs font-semibold">Markets</span>
           </div>
           <button 
             onClick={() => setSidebarExpanded(!sidebarExpanded)}
