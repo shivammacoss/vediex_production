@@ -39,3 +39,5 @@ coverage/
 *.seed
 *.pid.lock
 .cache/
+
+Vediex_mobile_apk

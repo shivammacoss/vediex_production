@@ -33,7 +33,7 @@ sudo apt update && sudo apt upgrade -y
 sudo apt install curl -y
 
 # Add NodeSource repository
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/Vediex_20.x | sudo -E bash -
 
 # Install Node.js
 sudo apt install nodejs -y
@@ -92,23 +92,23 @@ sudo apt install git -y
 ### Option A: Using Git (Recommended)
 ```bash
 cd /home/Vediex
-git clone YOUR_REPO_URL setup
+git clone YOUR_REPO_URL Vediex
 ```
 
 ### Option B: Using SCP (from your local machine)
 ```bash
 # Run this on your LOCAL machine, not VPS
-scp -r ./setup Vediex@YOUR_VPS_IP:/home/Vediex/
+scp -r ./Vediex Vediex@YOUR_VPS_IP:/home/Vediex/
 ```
 
 ### Option C: Using SFTP/FileZilla
 - Connect to VPS using FileZilla
-- Upload the `setup` folder to `/home/Vediex/`
+- Upload the `Vediex` folder to `/home/Vediex/`
 
 ## Step 9: Configure Backend
 
 ```bash
-cd /home/Vediex/setup/backend
+cd /home/Vediex/Vediex/backend
 
 # Install dependencies
 npm install
@@ -130,7 +130,7 @@ CORS_ORIGIN=http://YOUR_VPS_IP:5173
 ## Step 10: Configure Frontend
 
 ```bash
-cd /home/Vediex/setup/frontend
+cd /home/Vediex/Vediex/frontend
 
 # Install dependencies
 npm install
@@ -148,14 +148,14 @@ VITE_API_URL=http://YOUR_VPS_IP:5001
 ## Step 11: Build Frontend
 
 ```bash
-cd /home/Vediex/setup/frontend
+cd /home/Vediex/Vediex/frontend
 npm run build
 ```
 
 ## Step 12: Start Backend with PM2
 
 ```bash
-cd /home/Vediex/setup/backend
+cd /home/Vediex/Vediex/backend
 
 # Start with PM2
 pm2 start server.js --name Vediex-backend
@@ -163,7 +163,7 @@ pm2 start server.js --name Vediex-backend
 # Save PM2 configuration
 pm2 save
 
-# Setup PM2 to start on boot
+# Vediex PM2 to start on boot
 pm2 startup
 ```
 
@@ -172,7 +172,7 @@ pm2 startup
 ### Option A: Using serve (Simple)
 ```bash
 npm install -g serve
-cd /home/Vediex/setup/frontend
+cd /home/Vediex/Vediex/frontend
 pm2 start "serve -s dist -l 5173" --name Vediex-frontend
 ```
 
@@ -192,7 +192,7 @@ server {
     
     # Frontend
     location / {
-        root /home/Vediex/setup/frontend/dist;
+        root /home/Vediex/Vediex/frontend/dist;
         try_files $uri $uri/ /index.html;
     }
     

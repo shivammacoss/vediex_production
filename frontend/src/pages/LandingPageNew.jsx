@@ -4,7 +4,8 @@ import {
   Menu, X, BarChart3, Bitcoin, TrendingUp, TrendingDown,
   Coins, Star, ArrowRight, LineChart, PieChart, Globe, Zap, DollarSign,
   Activity, Gauge, Shield, Lightbulb, Rocket, Building2, BookOpen, Users, HelpCircle,
-  MessageCircle, FileQuestion, Instagram, Facebook, Github, KeyRound, Fingerprint, Server, Lock, Eye
+  MessageCircle, FileQuestion, Instagram, Facebook, Github, KeyRound, Fingerprint, Server, Lock, Eye,
+  Trophy, Target, CheckCircle
 } from 'lucide-react'
 
 // Animation hooks
@@ -45,6 +46,7 @@ const Navbar = () => {
     { label: 'Home', href: '#hero' },
     { label: 'Markets', href: '#markets' },
     { label: 'Solutions', href: '#solutions' },
+    { label: 'Prop Funding', href: '#prop-funding' },
     { label: 'Company', href: '#company' },
     { label: 'Support', href: '#support' },
   ]
@@ -343,6 +345,127 @@ const PerpetualFutures = () => {
   )
 }
 
+// ============ PROP FUNDING CHALLENGE ============
+const PropFunding = () => {
+  const { ref, controls } = useScrollAnimation()
+  const challenges = [
+    { name: 'Starter', fundingAmount: '$10,000', price: '$99', profitSplit: '80%', dailyDrawdown: '5%', maxDrawdown: '10%', profitTarget: '8%', color: '#00B894' },
+    { name: 'Growth', fundingAmount: '$25,000', price: '$199', profitSplit: '80%', dailyDrawdown: '5%', maxDrawdown: '10%', profitTarget: '8%', color: '#6C5CE7', popular: true },
+    { name: 'Pro', fundingAmount: '$50,000', price: '$349', profitSplit: '85%', dailyDrawdown: '5%', maxDrawdown: '10%', profitTarget: '8%', color: '#A29BFE' },
+    { name: 'Elite', fundingAmount: '$100,000', price: '$549', profitSplit: '90%', dailyDrawdown: '5%', maxDrawdown: '10%', profitTarget: '8%', color: '#FDCB6E' },
+  ]
+
+  return (
+    <section id="prop-funding" className="relative py-24 sm:py-32 bg-[#0B0D17]">
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] bg-[#FDCB6E]/5 rounded-full blur-[120px]" />
+      </div>
+      <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div ref={ref} initial="hidden" animate={controls} variants={staggerContainer} className="text-center mb-16">
+          <motion.span variants={fadeUp} className="inline-flex items-center gap-2 px-4 py-1.5 text-xs font-semibold tracking-wider uppercase text-[#FDCB6E] bg-[#FDCB6E]/10 rounded-full border border-[#FDCB6E]/20 mb-6">
+            <Trophy size={14} />
+            Prop Funding Challenge
+          </motion.span>
+          <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
+            Get Funded Up To <span className="text-[#FDCB6E]">$100,000</span>
+          </motion.h2>
+          <motion.p variants={fadeUp} className="text-lg text-[#8892B0] max-w-2xl mx-auto">
+            Prove your trading skills and get funded. Trade with our capital, keep up to 90% of the profits. No risk to your own money.
+          </motion.p>
+        </motion.div>
+
+        {/* How It Works */}
+        <motion.div initial="hidden" animate={controls} variants={staggerContainer} className="grid sm:grid-cols-3 gap-6 mb-16">
+          {[
+            { icon: Target, title: '1. Pass the Challenge', desc: 'Hit the profit target while respecting drawdown limits', color: '#00B894' },
+            { icon: CheckCircle, title: '2. Get Verified', desc: 'Complete verification and receive your funded account', color: '#6C5CE7' },
+            { icon: DollarSign, title: '3. Earn Profits', desc: 'Trade with our capital and keep up to 90% of profits', color: '#FDCB6E' },
+          ].map((step) => {
+            const Icon = step.icon
+            return (
+              <motion.div key={step.title} variants={fadeUp} className="p-6 rounded-2xl bg-[#1A1D35] border border-[rgba(108,92,231,0.15)] text-center">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: `${step.color}20` }}>
+                  <Icon size={22} style={{ color: step.color }} />
+                </div>
+                <h3 className="text-white font-bold text-lg mb-2">{step.title}</h3>
+                <p className="text-sm text-[#8892B0]">{step.desc}</p>
+              </motion.div>
+            )
+          })}
+        </motion.div>
+
+        {/* Challenge Tiers */}
+        <motion.div initial="hidden" animate={controls} variants={staggerContainer} className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {challenges.map((challenge) => (
+            <motion.div
+              key={challenge.name}
+              variants={fadeUp}
+              whileHover={{ y: -8, transition: { duration: 0.3 } }}
+              className={`relative p-6 rounded-2xl bg-[#1A1D35] border transition-all duration-300 ${
+                challenge.popular ? 'border-[#6C5CE7] ring-2 ring-[#6C5CE7]/20' : 'border-[rgba(108,92,231,0.15)] hover:border-[#6C5CE7]/30'
+              }`}
+            >
+              {challenge.popular && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 text-xs font-bold text-white bg-[#6C5CE7] rounded-full">
+                  MOST POPULAR
+                </div>
+              )}
+              <div className="text-center mb-6">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: `${challenge.color}20` }}>
+                  <Trophy size={22} style={{ color: challenge.color }} />
+                </div>
+                <h3 className="text-white font-bold text-xl mb-1">{challenge.name}</h3>
+                <div className="text-3xl font-bold" style={{ color: challenge.color }}>{challenge.fundingAmount}</div>
+                <div className="text-sm text-[#8892B0]">Funding</div>
+              </div>
+
+              <div className="space-y-3 mb-6">
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#8892B0]">Profit Split</span>
+                  <span className="text-white font-medium">{challenge.profitSplit}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#8892B0]">Daily Drawdown</span>
+                  <span className="text-white font-medium">{challenge.dailyDrawdown}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#8892B0]">Max Drawdown</span>
+                  <span className="text-white font-medium">{challenge.maxDrawdown}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#8892B0]">Profit Target</span>
+                  <span className="text-white font-medium">{challenge.profitTarget}</span>
+                </div>
+              </div>
+
+              <div className="border-t border-[rgba(108,92,231,0.15)] pt-4">
+                <div className="text-center mb-4">
+                  <span className="text-sm text-[#8892B0]">One-time fee</span>
+                  <div className="text-2xl font-bold text-white">{challenge.price}</div>
+                </div>
+                <a
+                  href={`${TRADE_URL}/user/login`}
+                  className={`w-full block text-center py-3 rounded-xl font-semibold transition-all duration-200 ${
+                    challenge.popular
+                      ? 'bg-[#6C5CE7] hover:bg-[#5B4BD5] text-white'
+                      : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
+                  }`}
+                >
+                  Buy Challenge
+                </a>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        <motion.p variants={fadeUp} className="text-center text-sm text-[#8892B0]/60 mt-10">
+          * Challenge rules and profit splits may vary. Please review full terms before purchasing.
+        </motion.p>
+      </div>
+    </section>
+  )
+}
+
 // ============ SECURITY ============
 const Security = () => {
   const { ref, controls } = useScrollAnimation()
@@ -554,6 +677,7 @@ const LandingPageNew = () => {
         <Products />
         <Markets />
         <PerpetualFutures />
+        <PropFunding />
         <Security />
         <Company />
         <Support />

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { 
   TrendingUp, TrendingDown, Shield, Zap, Globe, Smartphone, BarChart3,
   Menu, X, Download, ArrowRight, ChevronRight, Users, Award, Clock, Lock,
-  DollarSign, LineChart, PieChart, Wallet, CreditCard, Headphones
+  DollarSign, LineChart, PieChart, Wallet, CreditCard, Headphones, Trophy, Target, CheckCircle
 } from 'lucide-react'
 const logoImage = '/logo_edited.png'
 
@@ -15,8 +15,8 @@ const Navbar = () => {
 
   const menuItems = [
     { name: 'Markets', href: '#markets' },
+    { name: 'Prop Funding', href: '#prop-funding' },
     { name: 'Features', href: '#features' },
-    { name: 'Why Vediex', href: '#why-us' },
     { name: 'Download App', href: '#download' },
   ]
 
@@ -463,6 +463,180 @@ const FeaturesSection = () => {
   )
 }
 
+// ============ PROP FUNDING CHALLENGE SECTION ============
+const PropFundingSection = () => {
+  const challenges = [
+    {
+      name: 'Starter',
+      fundingAmount: '$10,000',
+      price: '$99',
+      profitSplit: '80%',
+      dailyDrawdown: '5%',
+      maxDrawdown: '10%',
+      profitTarget: '8%',
+      color: 'emerald'
+    },
+    {
+      name: 'Growth',
+      fundingAmount: '$25,000',
+      price: '$199',
+      profitSplit: '80%',
+      dailyDrawdown: '5%',
+      maxDrawdown: '10%',
+      profitTarget: '8%',
+      color: 'blue',
+      popular: true
+    },
+    {
+      name: 'Pro',
+      fundingAmount: '$50,000',
+      price: '$349',
+      profitSplit: '85%',
+      dailyDrawdown: '5%',
+      maxDrawdown: '10%',
+      profitTarget: '8%',
+      color: 'purple'
+    },
+    {
+      name: 'Elite',
+      fundingAmount: '$100,000',
+      price: '$549',
+      profitSplit: '90%',
+      dailyDrawdown: '5%',
+      maxDrawdown: '10%',
+      profitTarget: '8%',
+      color: 'amber'
+    },
+  ]
+
+  return (
+    <section id="prop-funding" className="bg-[#0a0a0a] py-20 px-4 sm:px-6">
+      <div className="max-w-[1200px] mx-auto">
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-full px-4 py-2 mb-6">
+            <Trophy className="w-4 h-4 text-amber-400" />
+            <span className="text-amber-400 text-sm font-medium">Prop Funding Challenge</span>
+          </div>
+          <h2 className="text-[32px] sm:text-[40px] md:text-[48px] font-bold text-white mb-4">
+            Get Funded Up To <span className="text-amber-400">$100,000</span>
+          </h2>
+          <p className="text-white/60 text-lg max-w-[700px] mx-auto">
+            Prove your trading skills and get funded. Trade with our capital, keep up to 90% of the profits. No risk to your own money.
+          </p>
+        </div>
+
+        {/* How It Works */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
+            <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <Target className="w-6 h-6 text-emerald-400" />
+            </div>
+            <h3 className="text-white font-bold text-lg mb-2">1. Pass the Challenge</h3>
+            <p className="text-white/50 text-sm">Hit the profit target while respecting drawdown limits</p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
+            <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-6 h-6 text-blue-400" />
+            </div>
+            <h3 className="text-white font-bold text-lg mb-2">2. Get Verified</h3>
+            <p className="text-white/50 text-sm">Complete verification and receive your funded account</p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
+            <div className="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <DollarSign className="w-6 h-6 text-amber-400" />
+            </div>
+            <h3 className="text-white font-bold text-lg mb-2">3. Earn Profits</h3>
+            <p className="text-white/50 text-sm">Trade with our capital and keep up to 90% of profits</p>
+          </div>
+        </div>
+
+        {/* Challenge Tiers */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {challenges.map((challenge, i) => (
+            <div 
+              key={i} 
+              className={`relative bg-gradient-to-b from-white/10 to-white/5 border rounded-2xl p-6 ${
+                challenge.popular ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-white/10'
+              }`}
+            >
+              {challenge.popular && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                  MOST POPULAR
+                </div>
+              )}
+              <div className="text-center mb-6">
+                <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl mb-3 ${
+                  challenge.color === 'emerald' ? 'bg-emerald-500/20' :
+                  challenge.color === 'blue' ? 'bg-blue-500/20' :
+                  challenge.color === 'purple' ? 'bg-purple-500/20' :
+                  'bg-amber-500/20'
+                }`}>
+                  <Trophy className={`w-6 h-6 ${
+                    challenge.color === 'emerald' ? 'text-emerald-400' :
+                    challenge.color === 'blue' ? 'text-blue-400' :
+                    challenge.color === 'purple' ? 'text-purple-400' :
+                    'text-amber-400'
+                  }`} />
+                </div>
+                <h3 className="text-white font-bold text-xl mb-1">{challenge.name}</h3>
+                <div className={`text-3xl font-bold ${
+                  challenge.color === 'emerald' ? 'text-emerald-400' :
+                  challenge.color === 'blue' ? 'text-blue-400' :
+                  challenge.color === 'purple' ? 'text-purple-400' :
+                  'text-amber-400'
+                }`}>{challenge.fundingAmount}</div>
+                <div className="text-white/50 text-sm">Funding</div>
+              </div>
+
+              <div className="space-y-3 mb-6">
+                <div className="flex justify-between text-sm">
+                  <span className="text-white/50">Profit Split</span>
+                  <span className="text-white font-medium">{challenge.profitSplit}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-white/50">Daily Drawdown</span>
+                  <span className="text-white font-medium">{challenge.dailyDrawdown}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-white/50">Max Drawdown</span>
+                  <span className="text-white font-medium">{challenge.maxDrawdown}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-white/50">Profit Target</span>
+                  <span className="text-white font-medium">{challenge.profitTarget}</span>
+                </div>
+              </div>
+
+              <div className="border-t border-white/10 pt-4">
+                <div className="text-center mb-4">
+                  <span className="text-white/50 text-sm">One-time fee</span>
+                  <div className="text-2xl font-bold text-white">{challenge.price}</div>
+                </div>
+                <a
+                  href="https://trade.vediex.com/user/login"
+                  className={`w-full block text-center py-3 rounded-xl font-semibold transition-all ${
+                    challenge.popular 
+                      ? 'bg-blue-500 hover:bg-blue-400 text-white' 
+                      : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
+                  }`}
+                >
+                  Buy Challenge
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="text-center mt-10">
+          <p className="text-white/40 text-sm">
+            * Challenge rules and profit splits may vary. Please review full terms before purchasing.
+          </p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 // ============ STATS SECTION ============
 const StatsSection = () => {
   const stats = [
@@ -670,6 +844,7 @@ const LandingPage = () => {
       <Hero />
       <MarketsSection />
       <FeaturesSection />
+      <PropFundingSection />
       <StatsSection />
       <AppDownloadSection />
       <CTASection />
