@@ -370,7 +370,8 @@ const PropFunding = () => {
   useEffect(() => {
     const fetchChallenges = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://trade.vediex.com/api'}/prop/challenges`)
+        const apiUrl = import.meta.env.VITE_API_URL || 'https://trade.vediex.com'
+        const res = await fetch(`${apiUrl}/api/prop/challenges`)
         const data = await res.json()
         if (data.success && data.challenges?.length > 0) {
           setChallenges(data.challenges)
@@ -578,28 +579,8 @@ const PropFunding = () => {
           </div>
         </motion.div>
 
-        {/* How It Works */}
-        <motion.div initial="hidden" animate={controls} variants={staggerContainer} className="rounded-2xl bg-[#1A1D35] border border-[rgba(108,92,231,0.15)] p-8 mb-8">
-          <h3 className="text-white font-bold text-2xl text-center mb-8">How It Works</h3>
-          <div className="grid sm:grid-cols-3 gap-8">
-            {[
-              { num: '1', title: 'Buy Challenge', desc: 'Choose your account size and pay the one-time fee.', color: '#6C5CE7' },
-              { num: '2', title: 'Pass Evaluation', desc: 'Trade within the rules and hit your profit target.', color: '#00B894' },
-              { num: '3', title: 'Get Funded', desc: 'Receive your funded account and start earning.', color: '#FDCB6E' },
-            ].map((step) => (
-              <div key={step.num} className="text-center">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: step.color }}>
-                  <span className="text-white font-bold text-lg">{step.num}</span>
-                </div>
-                <h4 className="text-white font-bold text-lg mb-2">{step.title}</h4>
-                <p className="text-sm text-[#8892B0]">{step.desc}</p>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-
         {/* Trading Rules */}
-        <motion.div initial="hidden" animate={controls} variants={fadeUp} className="rounded-2xl bg-[#1A1D35] border border-[rgba(108,92,231,0.15)] p-8">
+        <motion.div initial="hidden" animate={controls} variants={fadeUp} className="rounded-2xl bg-[#1A1D35] border border-[rgba(108,92,231,0.15)] p-8 mb-8">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl bg-[#00B894]/20 flex items-center justify-center">
               <Shield size={20} className="text-[#00B894]" />
@@ -676,6 +657,26 @@ const PropFunding = () => {
                 Make sure to review all trading parameters before starting.
               </p>
             </div>
+          </div>
+        </motion.div>
+
+        {/* How It Works */}
+        <motion.div initial="hidden" animate={controls} variants={staggerContainer} className="rounded-2xl bg-[#1A1D35] border border-[rgba(108,92,231,0.15)] p-8">
+          <h3 className="text-white font-bold text-2xl text-center mb-8">How It Works</h3>
+          <div className="grid sm:grid-cols-3 gap-8">
+            {[
+              { num: '1', title: 'Buy Challenge', desc: 'Choose your account size and pay the one-time fee.', color: '#6C5CE7' },
+              { num: '2', title: 'Pass Evaluation', desc: 'Trade within the rules and hit your profit target.', color: '#00B894' },
+              { num: '3', title: 'Get Funded', desc: 'Receive your funded account and start earning.', color: '#FDCB6E' },
+            ].map((step) => (
+              <div key={step.num} className="text-center">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: step.color }}>
+                  <span className="text-white font-bold text-lg">{step.num}</span>
+                </div>
+                <h4 className="text-white font-bold text-lg mb-2">{step.title}</h4>
+                <p className="text-sm text-[#8892B0]">{step.desc}</p>
+              </div>
+            ))}
           </div>
         </motion.div>
 
