@@ -5,7 +5,7 @@ import {
   Coins, Star, ArrowRight, LineChart, PieChart, Globe, Zap, DollarSign,
   Activity, Gauge, Shield, Lightbulb, Rocket, Building2, BookOpen, Users, HelpCircle,
   MessageCircle, FileQuestion, Instagram, Facebook, Github, KeyRound, Fingerprint, Server, Lock, Eye, Download,
-  Trophy, Target, CheckCircle
+  Trophy, Target, CheckCircle, Clock
 } from 'lucide-react'
 
 // Animation hooks
@@ -362,12 +362,66 @@ const PerpetualFutures = () => {
 // ============ PROP FUNDING CHALLENGE ============
 const PropFunding = () => {
   const { ref, controls } = useScrollAnimation()
-  const challenges = [
-    { name: 'Starter', fundingAmount: '$10,000', price: '$99', profitSplit: '80%', dailyDrawdown: '5%', maxDrawdown: '10%', profitTarget: '8%', color: '#00B894' },
-    { name: 'Growth', fundingAmount: '$25,000', price: '$199', profitSplit: '80%', dailyDrawdown: '5%', maxDrawdown: '10%', profitTarget: '8%', color: '#6C5CE7', popular: true },
-    { name: 'Pro', fundingAmount: '$50,000', price: '$349', profitSplit: '85%', dailyDrawdown: '5%', maxDrawdown: '10%', profitTarget: '8%', color: '#A29BFE' },
-    { name: 'Elite', fundingAmount: '$100,000', price: '$549', profitSplit: '90%', dailyDrawdown: '5%', maxDrawdown: '10%', profitTarget: '8%', color: '#FDCB6E' },
+  const [challenges, setChallenges] = useState([])
+  const [selectedChallenge, setSelectedChallenge] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  // Fetch challenges from API
+  useEffect(() => {
+    const fetchChallenges = async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'https://trade.vediex.com/api'}/prop/challenges`)
+        const data = await res.json()
+        if (data.success && data.challenges?.length > 0) {
+          setChallenges(data.challenges)
+          setSelectedChallenge(data.challenges[0])
+        }
+      } catch (err) {
+        console.error('Failed to fetch challenges:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchChallenges()
+  }, [])
+
+  // Group challenges by type (stepsCount: 0 = Instant, 1 = One Step, 2 = Two Step)
+  const challengeTypes = [
+    { id: 0, name: 'Instant Fund', desc: 'Skip the evaluation, get funded immediately' },
+    { id: 1, name: 'One Step', desc: 'Pass one evaluation phase to get funded' },
+    { id: 2, name: 'Two Step', desc: 'Pass two evaluation phases for higher profit split' },
   ]
+
+  // Get unique fund sizes from challenges
+  const accountSizes = [...new Set(challenges.map(c => c.fundSize))].sort((a, b) => a - b)
+
+  // Get selected challenge type (stepsCount)
+  const selectedType = selectedChallenge?.stepsCount ?? 1
+
+  // Filter challenges by selected type
+  const filteredChallenges = challenges.filter(c => c.stepsCount === selectedType)
+
+  // Get current challenge details
+  const currentDetails = selectedChallenge ? {
+    price: `$${selectedChallenge.price || 0}`,
+    profitSplit: `${selectedChallenge.profitSplitPercent || 80}%`,
+    dailyDrawdown: `${selectedChallenge.rules?.maxDailyDrawdownPercent || 5}%`,
+    maxDrawdown: `${selectedChallenge.rules?.maxOverallDrawdownPercent || 10}%`,
+    profitTarget: selectedChallenge.stepsCount === 0 ? 'None' : 
+      selectedChallenge.stepsCount === 2 
+        ? `Phase 1: ${selectedChallenge.rules?.profitTargetPhase1Percent || 8}%, Phase 2: ${selectedChallenge.rules?.profitTargetPhase2Percent || 5}%`
+        : `${selectedChallenge.rules?.profitTargetPhase1Percent || 8}%`,
+    leverage: `1:${selectedChallenge.rules?.maxLeverage || 100}`,
+    minDays: selectedChallenge.stepsCount === 2 ? `${selectedChallenge.rules?.minTradingDays || 5} per phase` : `${selectedChallenge.rules?.minTradingDays || 5}`,
+    payoutFreq: selectedChallenge.stepsCount === 0 ? 'Weekly' : 'Bi-Weekly',
+    timeLimit: `${selectedChallenge.rules?.challengeExpiryDays || 30} days`,
+    minLot: selectedChallenge.rules?.minLotSize || 0.01,
+    maxLot: selectedChallenge.rules?.maxLotSize || 100,
+    stopLossRequired: selectedChallenge.rules?.stopLossMandatory || false,
+    weekendHolding: selectedChallenge.rules?.allowWeekendHolding ?? true,
+    newsTrading: selectedChallenge.rules?.allowNewsTrading ?? true,
+    minHoldTime: selectedChallenge.rules?.minTradeHoldTimeSeconds || 60,
+  } : null
 
   return (
     <section id="prop-funding" className="relative py-24 sm:py-32 bg-[#0B0D17]">
@@ -375,7 +429,7 @@ const PropFunding = () => {
         <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] bg-[#FDCB6E]/5 rounded-full blur-[120px]" />
       </div>
       <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div ref={ref} initial="hidden" animate={controls} variants={staggerContainer} className="text-center mb-16">
+        <motion.div ref={ref} initial="hidden" animate={controls} variants={staggerContainer} className="text-center mb-12">
           <motion.span variants={fadeUp} className="inline-flex items-center gap-2 px-4 py-1.5 text-xs font-semibold tracking-wider uppercase text-[#FDCB6E] bg-[#FDCB6E]/10 rounded-full border border-[#FDCB6E]/20 mb-6">
             <Trophy size={14} />
             Prop Funding Challenge
@@ -384,92 +438,245 @@ const PropFunding = () => {
             Get Funded Up To <span className="text-[#FDCB6E]">$100,000</span>
           </motion.h2>
           <motion.p variants={fadeUp} className="text-lg text-[#8892B0] max-w-2xl mx-auto">
-            Prove your trading skills and get funded. Trade with our capital, keep up to 90% of the profits. No risk to your own money.
+            Choose your challenge type and account size. Prove your trading skills and get funded with our capital.
           </motion.p>
         </motion.div>
 
-        {/* How It Works */}
-        <motion.div initial="hidden" animate={controls} variants={staggerContainer} className="grid sm:grid-cols-3 gap-6 mb-16">
-          {[
-            { icon: Target, title: '1. Pass the Challenge', desc: 'Hit the profit target while respecting drawdown limits', color: '#00B894' },
-            { icon: CheckCircle, title: '2. Get Verified', desc: 'Complete verification and receive your funded account', color: '#6C5CE7' },
-            { icon: DollarSign, title: '3. Earn Profits', desc: 'Trade with our capital and keep up to 90% of profits', color: '#FDCB6E' },
-          ].map((step) => {
-            const Icon = step.icon
-            return (
-              <motion.div key={step.title} variants={fadeUp} className="p-6 rounded-2xl bg-[#1A1D35] border border-[rgba(108,92,231,0.15)] text-center">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: `${step.color}20` }}>
-                  <Icon size={22} style={{ color: step.color }} />
-                </div>
-                <h3 className="text-white font-bold text-lg mb-2">{step.title}</h3>
-                <p className="text-sm text-[#8892B0]">{step.desc}</p>
-              </motion.div>
-            )
-          })}
-        </motion.div>
-
-        {/* Challenge Tiers */}
-        <motion.div initial="hidden" animate={controls} variants={staggerContainer} className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {challenges.map((challenge) => (
-            <motion.div
-              key={challenge.name}
-              variants={fadeUp}
-              whileHover={{ y: -8, transition: { duration: 0.3 } }}
-              className={`relative p-6 rounded-2xl bg-[#1A1D35] border transition-all duration-300 ${
-                challenge.popular ? 'border-[#6C5CE7] ring-2 ring-[#6C5CE7]/20' : 'border-[rgba(108,92,231,0.15)] hover:border-[#6C5CE7]/30'
-              }`}
-            >
-              {challenge.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 text-xs font-bold text-white bg-[#6C5CE7] rounded-full">
-                  MOST POPULAR
-                </div>
-              )}
-              <div className="text-center mb-6">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: `${challenge.color}20` }}>
-                  <Trophy size={22} style={{ color: challenge.color }} />
-                </div>
-                <h3 className="text-white font-bold text-xl mb-1">{challenge.name}</h3>
-                <div className="text-3xl font-bold" style={{ color: challenge.color }}>{challenge.fundingAmount}</div>
-                <div className="text-sm text-[#8892B0]">Funding</div>
+        {/* Challenge Selection Card */}
+        <motion.div initial="hidden" animate={controls} variants={fadeUp} className="grid lg:grid-cols-3 gap-6 mb-16">
+          {/* Left: Challenge Type & Account Size */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Challenge Type */}
+            <div className="rounded-2xl bg-[#1A1D35] border border-[rgba(108,92,231,0.15)] p-6">
+              <h3 className="text-white font-bold text-lg mb-2">Challenge Type</h3>
+              <p className="text-sm text-[#8892B0] mb-4">Choose the type of challenge you want to take</p>
+              <div className="grid sm:grid-cols-3 gap-3">
+                {challengeTypes.map((type) => {
+                  const hasType = challenges.some(c => c.stepsCount === type.id)
+                  return (
+                    <button
+                      key={type.id}
+                      onClick={() => {
+                        const firstOfType = challenges.find(c => c.stepsCount === type.id)
+                        if (firstOfType) setSelectedChallenge(firstOfType)
+                      }}
+                      disabled={!hasType}
+                      className={`p-4 rounded-xl text-left transition-all duration-200 border ${
+                        selectedType === type.id
+                          ? 'bg-[#6C5CE7]/20 border-[#6C5CE7] ring-2 ring-[#6C5CE7]/30'
+                          : hasType ? 'bg-white/5 border-white/10 hover:border-white/20' : 'bg-white/5 border-white/10 opacity-50 cursor-not-allowed'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                          selectedType === type.id ? 'border-[#6C5CE7]' : 'border-[#8892B0]'
+                        }`}>
+                          {selectedType === type.id && <div className="w-2 h-2 rounded-full bg-[#6C5CE7]" />}
+                        </div>
+                        <span className="text-white font-semibold text-sm">{type.name}</span>
+                      </div>
+                      <p className="text-xs text-[#8892B0] ml-6">{type.desc}</p>
+                    </button>
+                  )
+                })}
               </div>
+            </div>
 
-              <div className="space-y-3 mb-6">
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#8892B0]">Profit Split</span>
-                  <span className="text-white font-medium">{challenge.profitSplit}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#8892B0]">Daily Drawdown</span>
-                  <span className="text-white font-medium">{challenge.dailyDrawdown}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#8892B0]">Max Drawdown</span>
-                  <span className="text-white font-medium">{challenge.maxDrawdown}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#8892B0]">Profit Target</span>
-                  <span className="text-white font-medium">{challenge.profitTarget}</span>
-                </div>
+            {/* Account Size */}
+            <div className="rounded-2xl bg-[#1A1D35] border border-[rgba(108,92,231,0.15)] p-6">
+              <h3 className="text-white font-bold text-lg mb-2">Account Size</h3>
+              <p className="text-sm text-[#8892B0] mb-4">Choose your preferred account size</p>
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                {filteredChallenges.map((challenge) => (
+                  <button
+                    key={challenge._id}
+                    onClick={() => setSelectedChallenge(challenge)}
+                    className={`p-3 rounded-xl text-center transition-all duration-200 border ${
+                      selectedChallenge?._id === challenge._id
+                        ? 'bg-[#6C5CE7]/20 border-[#6C5CE7] ring-2 ring-[#6C5CE7]/30'
+                        : 'bg-white/5 border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <div className={`w-3 h-3 rounded-full border-2 flex items-center justify-center ${
+                        selectedChallenge?._id === challenge._id ? 'border-[#6C5CE7]' : 'border-[#8892B0]'
+                      }`}>
+                        {selectedChallenge?._id === challenge._id && <div className="w-1.5 h-1.5 rounded-full bg-[#6C5CE7]" />}
+                      </div>
+                    </div>
+                    <span className="text-white font-semibold text-sm">${challenge.fundSize?.toLocaleString()}</span>
+                  </button>
+                ))}
               </div>
+            </div>
+          </div>
 
-              <div className="border-t border-[rgba(108,92,231,0.15)] pt-4">
-                <div className="text-center mb-4">
-                  <span className="text-sm text-[#8892B0]">One-time fee</span>
-                  <div className="text-2xl font-bold text-white">{challenge.price}</div>
+          {/* Right: Order Summary */}
+          <div className="rounded-2xl bg-[#1A1D35] border border-[rgba(108,92,231,0.15)] p-6">
+            <h3 className="text-white font-bold text-lg mb-4">Order Summary</h3>
+            
+            {currentDetails ? (
+              <>
+                <div className="space-y-4 mb-6">
+                  <div className="flex justify-between items-center pb-3 border-b border-white/10">
+                    <span className="text-[#8892B0]">Challenge Type</span>
+                    <span className="text-white font-medium">{challengeTypes.find(t => t.id === selectedType)?.name}</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-3 border-b border-white/10">
+                    <span className="text-[#8892B0]">Account Size</span>
+                    <span className="text-[#FDCB6E] font-bold text-lg">${selectedChallenge?.fundSize?.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-3 border-b border-white/10">
+                    <span className="text-[#8892B0]">Profit Split</span>
+                    <span className="text-[#00B894] font-medium">{currentDetails.profitSplit}</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-3 border-b border-white/10">
+                    <span className="text-[#8892B0]">Daily Drawdown</span>
+                    <span className="text-white font-medium">{currentDetails.dailyDrawdown}</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-3 border-b border-white/10">
+                    <span className="text-[#8892B0]">Max Drawdown</span>
+                    <span className="text-white font-medium">{currentDetails.maxDrawdown}</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-3 border-b border-white/10">
+                    <span className="text-[#8892B0]">Profit Target</span>
+                    <span className="text-white font-medium text-right text-sm">{currentDetails.profitTarget}</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-3 border-b border-white/10">
+                    <span className="text-[#8892B0]">Leverage</span>
+                    <span className="text-white font-medium">{currentDetails.leverage}</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-3 border-b border-white/10">
+                    <span className="text-[#8892B0]">Min Trading Days</span>
+                    <span className="text-white font-medium">{currentDetails.minDays}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[#8892B0]">Payout Frequency</span>
+                    <span className="text-white font-medium">{currentDetails.payoutFreq}</span>
+                  </div>
                 </div>
+
+                <div className="bg-[#6C5CE7]/10 rounded-xl p-4 mb-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-white font-medium">One-time Fee</span>
+                    <span className="text-2xl font-bold text-white">{currentDetails.price}</span>
+                  </div>
+                </div>
+
                 <a
                   href={`${TRADE_URL}/user/login`}
-                  className={`w-full block text-center py-3 rounded-xl font-semibold transition-all duration-200 ${
-                    challenge.popular
-                      ? 'bg-[#6C5CE7] hover:bg-[#5B4BD5] text-white'
-                      : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
-                  }`}
+                  className="w-full block text-center py-4 rounded-xl font-semibold bg-[#6C5CE7] hover:bg-[#5B4BD5] text-white transition-all duration-200"
                 >
-                  Buy Challenge
+                  Continue to Payment →
                 </a>
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-[#8892B0]">Loading challenges...</p>
               </div>
-            </motion.div>
-          ))}
+            )}
+          </div>
+        </motion.div>
+
+        {/* How It Works */}
+        <motion.div initial="hidden" animate={controls} variants={staggerContainer} className="rounded-2xl bg-[#1A1D35] border border-[rgba(108,92,231,0.15)] p-8 mb-8">
+          <h3 className="text-white font-bold text-2xl text-center mb-8">How It Works</h3>
+          <div className="grid sm:grid-cols-3 gap-8">
+            {[
+              { num: '1', title: 'Buy Challenge', desc: 'Choose your account size and pay the one-time fee.', color: '#6C5CE7' },
+              { num: '2', title: 'Pass Evaluation', desc: 'Trade within the rules and hit your profit target.', color: '#00B894' },
+              { num: '3', title: 'Get Funded', desc: 'Receive your funded account and start earning.', color: '#FDCB6E' },
+            ].map((step) => (
+              <div key={step.num} className="text-center">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: step.color }}>
+                  <span className="text-white font-bold text-lg">{step.num}</span>
+                </div>
+                <h4 className="text-white font-bold text-lg mb-2">{step.title}</h4>
+                <p className="text-sm text-[#8892B0]">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Trading Rules */}
+        <motion.div initial="hidden" animate={controls} variants={fadeUp} className="rounded-2xl bg-[#1A1D35] border border-[rgba(108,92,231,0.15)] p-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-[#00B894]/20 flex items-center justify-center">
+              <Shield size={20} className="text-[#00B894]" />
+            </div>
+            <div>
+              <h3 className="text-white font-bold text-xl">Trading Rules</h3>
+              <p className="text-[#8892B0] text-sm">Challenge parameters you must follow</p>
+            </div>
+          </div>
+
+          {/* Rules Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white/5 rounded-xl p-4 text-center">
+              <p className="text-[#8892B0] text-xs mb-1">Daily Drawdown</p>
+              <p className="text-red-400 font-bold text-xl">{currentDetails?.dailyDrawdown || '5%'}</p>
+            </div>
+            <div className="bg-white/5 rounded-xl p-4 text-center">
+              <p className="text-[#8892B0] text-xs mb-1">Max Drawdown</p>
+              <p className="text-red-400 font-bold text-xl">{currentDetails?.maxDrawdown || '10%'}</p>
+            </div>
+            <div className="bg-white/5 rounded-xl p-4 text-center">
+              <p className="text-[#8892B0] text-xs mb-1">Profit Target</p>
+              <p className="text-[#00B894] font-bold text-xl">{currentDetails?.profitTarget || '8%'}</p>
+            </div>
+            <div className="bg-white/5 rounded-xl p-4 text-center">
+              <p className="text-[#8892B0] text-xs mb-1">Time Limit</p>
+              <p className="text-white font-bold text-xl">{currentDetails?.timeLimit || '30 days'}</p>
+            </div>
+            <div className="bg-white/5 rounded-xl p-4 text-center">
+              <p className="text-[#8892B0] text-xs mb-1">Min Lot Size</p>
+              <p className="text-white font-bold text-xl">{currentDetails?.minLot || 0.01}</p>
+            </div>
+            <div className="bg-white/5 rounded-xl p-4 text-center">
+              <p className="text-[#8892B0] text-xs mb-1">Max Lot Size</p>
+              <p className="text-white font-bold text-xl">{currentDetails?.maxLot || 100}</p>
+            </div>
+            <div className="bg-white/5 rounded-xl p-4 text-center">
+              <p className="text-[#8892B0] text-xs mb-1">Max Leverage</p>
+              <p className="text-white font-bold text-xl">{currentDetails?.leverage || '1:100'}</p>
+            </div>
+            <div className="bg-white/5 rounded-xl p-4 text-center">
+              <p className="text-[#8892B0] text-xs mb-1">Profit Split</p>
+              <p className="text-[#FDCB6E] font-bold text-xl">{currentDetails?.profitSplit || '80%'}</p>
+            </div>
+          </div>
+
+          {/* Rule Toggles */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${currentDetails?.stopLossRequired ? 'bg-yellow-500/10 text-yellow-400' : 'bg-[#00B894]/10 text-[#00B894]'}`}>
+              <CheckCircle size={16} />
+              <span className="text-sm">Stop Loss {currentDetails?.stopLossRequired ? 'Required' : 'Optional'}</span>
+            </div>
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${currentDetails?.weekendHolding ? 'bg-[#00B894]/10 text-[#00B894]' : 'bg-red-500/10 text-red-400'}`}>
+              <CheckCircle size={16} />
+              <span className="text-sm">Weekend Holding {currentDetails?.weekendHolding ? 'Allowed' : 'Not Allowed'}</span>
+            </div>
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${currentDetails?.newsTrading ? 'bg-[#00B894]/10 text-[#00B894]' : 'bg-red-500/10 text-red-400'}`}>
+              <CheckCircle size={16} />
+              <span className="text-sm">News Trading {currentDetails?.newsTrading ? 'Allowed' : 'Not Allowed'}</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#6C5CE7]/10 text-[#A29BFE]">
+              <Clock size={16} />
+              <span className="text-sm">Min Hold: {currentDetails?.minHoldTime || 60}s</span>
+            </div>
+          </div>
+
+          {/* Warning */}
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 flex items-start gap-3">
+            <Target size={20} className="text-yellow-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-yellow-400 font-medium">Important Rules</p>
+              <p className="text-[#8892B0] text-sm mt-1">
+                Breaking any rule will result in immediate account failure. All trades must follow the challenge rules. 
+                Make sure to review all trading parameters before starting.
+              </p>
+            </div>
+          </div>
         </motion.div>
 
         <motion.p variants={fadeUp} className="text-center text-sm text-[#8892B0]/60 mt-10">
