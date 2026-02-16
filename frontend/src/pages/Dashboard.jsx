@@ -43,6 +43,7 @@ const Dashboard = () => {
   const [totalCharges, setTotalCharges] = useState(0)
   const [totalPnl, setTotalPnl] = useState(0)
   const [userAccounts, setUserAccounts] = useState([])
+  const [challengeAccounts, setChallengeAccounts] = useState([])
   const [challengeModeEnabled, setChallengeModeEnabled] = useState(false)
   const tradingViewRef = useRef(null)
   const economicCalendarRef = useRef(null)
@@ -104,6 +105,7 @@ const Dashboard = () => {
     if (user._id) {
       fetchWalletBalance()
       fetchUserAccounts()
+      fetchChallengeAccounts()
     }
   }, [user._id])
   
@@ -143,6 +145,18 @@ const Dashboard = () => {
       setUserAccounts(data.accounts || [])
     } catch (error) {
       console.error('Error fetching accounts:', error)
+    }
+  }
+
+  const fetchChallengeAccounts = async () => {
+    try {
+      const res = await fetch(`${API_URL}/prop/my-accounts/${user._id}`)
+      const data = await res.json()
+      if (data.success) {
+        setChallengeAccounts(data.accounts || [])
+      }
+    } catch (error) {
+      console.error('Error fetching challenge accounts:', error)
     }
   }
 
@@ -517,7 +531,7 @@ const Dashboard = () => {
               </div>
               <p className={`text-sm mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>Challenge Accounts</p>
               <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                {userAccounts.filter(acc => acc.accountType === 'CHALLENGE').length}
+                {challengeAccounts.length}
               </p>
             </div>
           </div>

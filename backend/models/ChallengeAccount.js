@@ -206,7 +206,7 @@ const challengeAccountSchema = new mongoose.Schema({
 // Add indexes for faster queries
 challengeAccountSchema.index({ userId: 1, status: 1 })
 challengeAccountSchema.index({ userId: 1, createdAt: -1 })
-challengeAccountSchema.index({ accountId: 1 })
+// Note: accountId already has unique: true which creates an index
 
 // Generate unique account ID
 challengeAccountSchema.statics.generateAccountId = async function(type = 'CH') {

@@ -1,21 +1,27 @@
-// MetaAPI Price Service - Real-time market data via MetaAPI REST + WebSocket
-// Using direct REST API calls instead of SDK (SDK is browser-only)
+// MetaAPI Price Service - Real-time market data via MetaAPI SDK WebSocket Streaming
+// Uses MetaAPI SDK for tick-by-tick real-time prices
 // Docs: https://metaapi.cloud/docs/client/
 // Fallback: Uses Binance API for crypto and simulated prices for forex when MetaAPI fails
 
-import WebSocket from 'ws'
 import dotenv from 'dotenv'
+
+// Use CommonJS require for MetaAPI SDK (Node.js version, not browser)
+import { createRequire } from 'module'
+const require = createRequire(import.meta.url)
+const MetaApi = require('metaapi.cloud-sdk').default
+const SynchronizationListener = require('metaapi.cloud-sdk').SynchronizationListener
 
 dotenv.config()
 
 const METAAPI_TOKEN = process.env.METAAPI_TOKEN || ''
 const METAAPI_ACCOUNT_ID = process.env.METAAPI_ACCOUNT_ID || ''
+const METAAPI_DOMAIN = process.env.METAAPI_DOMAIN || 'agiliumtrade.agiliumtrade.ai'
 
-// API endpoints - MetaAPI uses region-specific endpoints
-// Default to New York region, can be overridden in .env
-const REGION = process.env.METAAPI_REGION || 'vint-hill'
-const API_URL = `https://mt-client-api-v1.${REGION}.agiliumtrade.ai`
-const PROVISIONING_API = `https://mt-provisioning-api-v1.${REGION}.agiliumtrade.ai`
+// MetaAPI SDK instance
+let api = null
+let account = null
+let connection = null
+let quoteListener = null
 
 // Fallback mode flag
 let useFallbackPrices = false
@@ -30,7 +36,6 @@ let onConnectionChange = null
 
 // Connection state
 let isConnected = false
-let ws = null
 let reconnectTimeout = null
 let pricePollingInterval = null
 
@@ -308,6 +313,51 @@ async function fetchAllPrices() {
 }
 fetchAllPrices.lastLog = 0
 
+// Quote Listener class for real-time price streaming
+class QuoteListener extends SynchronizationListener {
+  async onSymbolPriceUpdated(instanceIndex, price) {
+    const priceData = {
+      bid: price.bid,
+      ask: price.ask,
+      mid: (price.bid + price.ask) / 2,
+      time: Date.now(),
+      spread: price.ask - price.bid
+    }
+    priceCache.set(price.symbol, priceData)
+    if (onPriceUpdate) onPriceUpdate(price.symbol, priceData)
+  }
+  
+  async onTicksUpdated(instanceIndex, ticks) {
+    for (const tick of ticks) {
+      const priceData = {
+        bid: tick.bid || tick.ask,
+        ask: tick.ask || tick.bid,
+        mid: tick.bid && tick.ask ? (tick.bid + tick.ask) / 2 : (tick.bid || tick.ask),
+        time: tick.time ? new Date(tick.time).getTime() : Date.now(),
+        spread: tick.bid && tick.ask ? tick.ask - tick.bid : 0
+      }
+      priceCache.set(tick.symbol, priceData)
+      if (onPriceUpdate) onPriceUpdate(tick.symbol, priceData)
+    }
+  }
+  
+  async onSubscriptionDowngraded(instanceIndex, symbol, updates, unsubscriptions) {
+    console.log(`[MetaAPI] Subscription downgraded for ${symbol} due to rate limits`)
+  }
+  
+  async onConnected(instanceIndex, replicas) {
+    console.log('[MetaAPI] WebSocket connected')
+    isConnected = true
+    if (onConnectionChange) onConnectionChange(true)
+  }
+  
+  async onDisconnected(instanceIndex) {
+    console.log('[MetaAPI] WebSocket disconnected')
+    isConnected = false
+    if (onConnectionChange) onConnectionChange(false)
+  }
+}
+
 // Connect to MetaAPI with fallback support
 async function connect() {
   // If no MetaAPI credentials, use fallback immediately
@@ -318,62 +368,82 @@ async function connect() {
     return
   }
 
-  console.log('[MetaAPI] Initializing connection...')
+  console.log('[MetaAPI] Initializing SDK connection...')
   console.log(`[MetaAPI] Account ID: ${METAAPI_ACCOUNT_ID.substring(0, 8)}...`)
   console.log(`[MetaAPI] Token: ${METAAPI_TOKEN.substring(0, 10)}...`)
-  console.log(`[MetaAPI] Region: ${REGION}`)
-  console.log(`[MetaAPI] API URL: ${API_URL}`)
+  console.log(`[MetaAPI] Domain: ${METAAPI_DOMAIN}`)
 
   try {
-    // Get account details first
-    const account = await getAccountDetails()
-    if (account) {
-      console.log(`[MetaAPI] Account: ${account.name} (${account.type})`)
-      console.log(`[MetaAPI] State: ${account.state}, Connection Status: ${account.connectionStatus}`)
-    } else {
-      console.log('[MetaAPI] WARNING: Could not get account details - switching to fallback')
-      useFallbackPrices = true
-      await startFallbackMode()
-      return
+    // Initialize MetaAPI SDK
+    api = new MetaApi(METAAPI_TOKEN, { domain: METAAPI_DOMAIN })
+    
+    // Get account
+    account = await api.metatraderAccountApi.getAccount(METAAPI_ACCOUNT_ID)
+    console.log(`[MetaAPI] Account: ${account.name} (${account.type})`)
+    console.log(`[MetaAPI] State: ${account.state}, Connection Status: ${account.connectionStatus}`)
+    
+    // Deploy account if not deployed
+    if (account.state !== 'DEPLOYED') {
+      console.log('[MetaAPI] Deploying account...')
+      await account.deploy()
     }
     
-    // Fetch initial prices
-    await fetchAllPrices()
+    // Wait for connection to broker
+    if (account.connectionStatus !== 'CONNECTED') {
+      console.log('[MetaAPI] Waiting for broker connection...')
+      await account.waitConnected({ timeoutInSeconds: 60 })
+    }
     
-    // Check if we got any prices - if not, switch to fallback
-    if (priceCache.size === 0) {
-      console.log('[MetaAPI] No prices received - switching to fallback')
-      useFallbackPrices = true
-      await startFallbackMode()
-      return
+    // Create streaming connection
+    connection = account.getStreamingConnection()
+    
+    // Add quote listener for real-time prices
+    quoteListener = new QuoteListener()
+    connection.addSynchronizationListener(quoteListener)
+    
+    // Connect to MetaAPI WebSocket
+    await connection.connect()
+    
+    // Wait for synchronization
+    console.log('[MetaAPI] Waiting for synchronization...')
+    await connection.waitSynchronized({ timeoutInSeconds: 120 })
+    
+    // Subscribe to market data for all symbols
+    console.log('[MetaAPI] Subscribing to market data...')
+    for (const symbol of ALL_SYMBOLS) {
+      try {
+        await connection.subscribeToMarketData(symbol, [
+          { type: 'quotes', intervalInMilliseconds: 1000 },
+          { type: 'ticks' }
+        ])
+      } catch (e) {
+        // Symbol might not be available on this broker
+        console.log(`[MetaAPI] Could not subscribe to ${symbol}: ${e.message}`)
+      }
     }
     
     isConnected = true
     if (onConnectionChange) onConnectionChange(true)
     
-    console.log(`[MetaAPI] Connected! Price cache: ${priceCache.size} symbols`)
+    console.log(`[MetaAPI] Connected with WebSocket streaming! Subscribed symbols: ${ALL_SYMBOLS.length}`)
     
-    // Start polling for price updates every 30 seconds
+    // Also start fallback polling for symbols not available via MetaAPI
     if (pricePollingInterval) clearInterval(pricePollingInterval)
     pricePollingInterval = setInterval(async () => {
       try {
-        if (useFallbackPrices) {
-          await fetchFallbackPrices()
-        } else {
-          await fetchAllPrices()
-          // If MetaAPI starts failing, switch to fallback
-          if (priceCache.size === 0) {
-            console.log('[MetaAPI] Lost prices - switching to fallback')
-            useFallbackPrices = true
-          }
+        // Fetch Binance prices for crypto (more reliable)
+        const binancePrices = await fetchBinancePrices()
+        for (const [symbol, price] of Object.entries(binancePrices)) {
+          priceCache.set(symbol, price)
+          if (onPriceUpdate) onPriceUpdate(symbol, price)
         }
       } catch (e) {
-        console.error('[MetaAPI] Price polling error:', e.message)
+        console.error('[MetaAPI] Fallback price polling error:', e.message)
       }
-    }, 10000) // Poll every 10 seconds for more responsive updates
+    }, 5000)
     
   } catch (error) {
-    console.error('[MetaAPI] Connection error:', error.message)
+    console.error('[MetaAPI] SDK Connection error:', error.message)
     console.log('[MetaAPI] Switching to fallback price providers')
     useFallbackPrices = true
     await startFallbackMode()
@@ -407,7 +477,7 @@ async function startFallbackMode() {
 }
 
 // Disconnect
-function disconnect() {
+async function disconnect() {
   if (pricePollingInterval) {
     clearInterval(pricePollingInterval)
     pricePollingInterval = null
@@ -416,10 +486,20 @@ function disconnect() {
     clearTimeout(reconnectTimeout)
     reconnectTimeout = null
   }
-  if (ws) {
-    ws.close()
-    ws = null
+  
+  // Close MetaAPI SDK connection
+  if (connection) {
+    try {
+      if (quoteListener) {
+        connection.removeSynchronizationListener(quoteListener)
+      }
+      await connection.close()
+    } catch (e) {
+      console.error('[MetaAPI] Error closing connection:', e.message)
+    }
+    connection = null
   }
+  
   isConnected = false
   console.log('[MetaAPI] Disconnected')
 }
