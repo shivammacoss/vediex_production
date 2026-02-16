@@ -159,14 +159,41 @@ router.get('/my-accounts/:userId', async (req, res) => {
     const accounts = await ChallengeAccount.find(query)
       .populate('challengeId')
       .sort({ createdAt: -1 })
+      .lean()
 
-    // Fetch live prices from Binance for crypto and use cached prices
+    // Return early if no accounts
+    if (!accounts.length) {
+      return res.json({ success: true, accounts: [] })
+    }
+
+    // Get all account IDs for batch query
+    const accountIds = accounts.map(a => a._id)
+
+    // Batch fetch all open trades for all accounts at once (avoid N+1)
+    const allOpenTrades = await Trade.find({
+      tradingAccountId: { $in: accountIds },
+      status: 'OPEN'
+    }).lean()
+
+    // Group trades by account
+    const tradesByAccount = {}
+    allOpenTrades.forEach(trade => {
+      const accId = trade.tradingAccountId.toString()
+      if (!tradesByAccount[accId]) tradesByAccount[accId] = []
+      tradesByAccount[accId].push(trade)
+    })
+
+    // Fetch live prices from Binance with timeout (don't block if slow)
     let livePrices = {}
     try {
-      const binanceRes = await fetch('https://api.binance.com/api/v3/ticker/bookTicker')
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 3000) // 3 second timeout
+      const binanceRes = await fetch('https://api.binance.com/api/v3/ticker/bookTicker', {
+        signal: controller.signal
+      })
+      clearTimeout(timeoutId)
       const binanceData = await binanceRes.json()
       binanceData.forEach(ticker => {
-        // Map Binance symbols to our format
         const symbol = ticker.symbol.replace('USDT', 'USD')
         livePrices[symbol] = {
           bid: parseFloat(ticker.bidPrice),
@@ -174,18 +201,15 @@ router.get('/my-accounts/:userId', async (req, res) => {
         }
       })
     } catch (e) {
-      console.log('Could not fetch live prices for challenge accounts')
+      console.log('Could not fetch live prices for challenge accounts (timeout or error)')
     }
 
-    // Calculate real-time values for each account based on open trades
-    const accountsWithRealTimeData = await Promise.all(accounts.map(async (account) => {
-      const accountObj = account.toObject()
+    // Calculate real-time values for each account (no async needed now)
+    const accountsWithRealTimeData = accounts.map((account) => {
+      const accountObj = { ...account }
       
-      // Get open trades for this account
-      const openTrades = await Trade.find({
-        tradingAccountId: account._id,
-        status: 'OPEN'
-      })
+      // Get open trades for this account from pre-fetched data
+      const openTrades = tradesByAccount[account._id.toString()] || []
       
       // Calculate floating PnL using live prices
       let floatingPnl = 0
@@ -233,7 +257,7 @@ router.get('/my-accounts/:userId', async (req, res) => {
         currentProfitPercent: Math.round(realTimeProfit * 100) / 100,
         floatingPnl: Math.round(floatingPnl * 100) / 100
       }
-    }))
+    })
 
     res.json({ success: true, accounts: accountsWithRealTimeData })
   } catch (error) {
