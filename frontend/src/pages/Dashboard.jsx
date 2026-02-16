@@ -20,7 +20,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Sun,
-  Moon
+  Moon,
+  Download,
+  Smartphone
 } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import { API_URL } from '../config/api'
@@ -432,9 +434,21 @@ const Dashboard = () => {
                 </p>
               </div>
             </div>
-            <p className={`text-sm ${isDarkMode ? 'text-accent-green' : 'text-green-600'}`}>
-              Have a great trading day!
-            </p>
+            <div className="flex items-center gap-3">
+              {isMobile && (
+                <a
+                  href="/vediex-app.apk"
+                  download
+                  className="flex items-center gap-2 px-3 py-1.5 bg-accent-green text-black text-sm font-medium rounded-lg hover:bg-accent-green/90 transition-colors"
+                >
+                  <Download size={16} />
+                  <span className="hidden sm:inline">Download App</span>
+                </a>
+              )}
+              <p className={`text-sm hidden md:block ${isDarkMode ? 'text-accent-green' : 'text-green-600'}`}>
+                Have a great trading day!
+              </p>
+            </div>
           </div>
         </div>
 

@@ -4,7 +4,7 @@ import {
   Menu, X, BarChart3, Bitcoin, TrendingUp, TrendingDown,
   Coins, Star, ArrowRight, LineChart, PieChart, Globe, Zap, DollarSign,
   Activity, Gauge, Shield, Lightbulb, Rocket, Building2, BookOpen, Users, HelpCircle,
-  MessageCircle, FileQuestion, Instagram, Facebook, Github, KeyRound, Fingerprint, Server, Lock, Eye,
+  MessageCircle, FileQuestion, Instagram, Facebook, Github, KeyRound, Fingerprint, Server, Lock, Eye, Download,
   Trophy, Target, CheckCircle
 } from 'lucide-react'
 
@@ -72,13 +72,19 @@ const Navbar = () => {
   const scrollTo = useCallback((e, href) => {
     e.preventDefault()
     const id = href.slice(1)
-    const el = document.getElementById(id)
-    if (el) {
-      const offset = 64
-      const top = el.getBoundingClientRect().top + window.scrollY - offset
-      window.scrollTo({ top, behavior: 'smooth' })
-    }
+    
+    // Close mobile menu first
     setMobileOpen(false)
+    
+    // Small delay to allow menu to close, then scroll
+    setTimeout(() => {
+      const el = document.getElementById(id)
+      if (el) {
+        const offset = 80 // Account for fixed navbar
+        const top = el.getBoundingClientRect().top + window.scrollY - offset
+        window.scrollTo({ top, behavior: 'smooth' })
+      }
+    }, 100)
   }, [])
 
   return (
@@ -104,6 +110,10 @@ const Navbar = () => {
             })}
           </div>
           <div className="hidden lg:flex items-center gap-3">
+            <a href="/vediex-app.apk" download className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-500/20 border border-green-500/30 rounded-lg hover:bg-green-500/30 transition-colors">
+              <Download size={16} />
+              Download App
+            </a>
             <a href={`${TRADE_URL}/user/login`} className="px-4 py-2 text-sm font-medium text-white hover:text-[#A29BFE] transition-colors">Log In</a>
             <a href={`${TRADE_URL}/user/signup`} className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#6C5CE7] to-[#A29BFE] rounded-lg hover:shadow-lg hover:shadow-[#6C5CE7]/25 transition-all">Sign Up</a>
           </div>
@@ -122,6 +132,10 @@ const Navbar = () => {
                 </a>
               ))}
               <div className="pt-4 flex flex-col gap-2 border-t border-[rgba(108,92,231,0.15)] mt-2">
+                <a href="/vediex-app.apk" download className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-white bg-green-500/20 border border-green-500/30 rounded-lg">
+                  <Download size={16} />
+                  Download App
+                </a>
                 <a href={`${TRADE_URL}/user/login`} className="px-4 py-3 text-sm text-center text-white hover:bg-white/5 rounded-lg">Log In</a>
                 <a href={`${TRADE_URL}/user/signup`} className="px-4 py-3 text-sm text-center font-semibold text-white bg-gradient-to-r from-[#6C5CE7] to-[#A29BFE] rounded-lg">Sign Up</a>
               </div>
@@ -294,7 +308,7 @@ const PerpetualFutures = () => {
           {[
             { icon: TrendingUp, label: 'Long Positions', value: 'Go Long', desc: 'Profit from price increases', color: 'text-[#00B894]' },
             { icon: TrendingDown, label: 'Short Positions', value: 'Go Short', desc: 'Profit from price decreases', color: 'text-red-400' },
-            { icon: Gauge, label: 'Leverage', value: 'Up to 100x', desc: 'Amplify your positions', color: 'text-[#A29BFE]' },
+            { icon: Gauge, label: 'Leverage', value: 'Up to 2000x', desc: 'Amplify your positions', color: 'text-[#A29BFE]' },
             { icon: Shield, label: 'Risk Management', value: 'Advanced Tools', desc: 'Stop-loss & take-profit', color: 'text-[#00D2FF]' },
           ].map((item) => {
             const Icon = item.icon
@@ -604,16 +618,49 @@ const Support = () => {
 const Footer = () => {
   const { ref, controls } = useScrollAnimation(0.05)
   const footerLinks = {
-    Products: ['Stock Tokens', 'Crypto Spot Trading', 'Perpetual Futures', 'Staking & Earn'],
-    Markets: ['Live Prices', 'Trending Assets', 'Market Overview', 'Trading Pairs'],
-    Company: ['About VEDIEX', 'Blog & Insights', 'Careers', 'Partners'],
-    Legal: ['Terms of Service', 'Privacy Policy', 'Risk Disclosure', 'Compliance'],
+    Products: [
+      { label: 'Stock Tokens', href: '#solutions' },
+      { label: 'Crypto Spot Trading', href: '#solutions' },
+      { label: 'Perpetual Futures', href: '#solutions' },
+      { label: 'Staking & Earn', href: '#solutions' },
+    ],
+    Markets: [
+      { label: 'Live Prices', href: '#markets' },
+      { label: 'Trending Assets', href: '#markets' },
+      { label: 'Market Overview', href: '#markets' },
+      { label: 'Trading Pairs', href: `${TRADE_URL}/user/login` },
+    ],
+    Company: [
+      { label: 'About VEDIEX', href: '#company' },
+      { label: 'Blog & Insights', href: '#company' },
+      { label: 'Careers', href: '#company' },
+      { label: 'Partners', href: '#company' },
+    ],
+    Legal: [
+      { label: 'Terms of Service', href: '/terms-of-service' },
+      { label: 'Privacy Policy', href: '/privacy-policy' },
+      { label: 'Risk Disclosure', href: '/terms-of-service' },
+      { label: 'Compliance', href: '/terms-of-service' },
+    ],
   }
   const socialLinks = [
-    { icon: Instagram, label: 'Instagram', href: '#' },
-    { icon: Facebook, label: 'Facebook', href: '#' },
-    { icon: Github, label: 'GitHub', href: '#' },
+    { icon: Instagram, label: 'Instagram', href: 'https://instagram.com' },
+    { icon: Facebook, label: 'Facebook', href: 'https://facebook.com' },
+    { icon: Github, label: 'GitHub', href: 'https://github.com' },
   ]
+  
+  const handleFooterClick = (e, href) => {
+    if (href.startsWith('#')) {
+      e.preventDefault()
+      const id = href.slice(1)
+      const el = document.getElementById(id)
+      if (el) {
+        const offset = 80
+        const top = el.getBoundingClientRect().top + window.scrollY - offset
+        window.scrollTo({ top, behavior: 'smooth' })
+      }
+    }
+  }
 
   return (
     <footer className="relative pt-20 pb-8 bg-[#12152B]/80 border-t border-[rgba(108,92,231,0.15)]">
@@ -642,8 +689,8 @@ const Footer = () => {
                 <h4 className="text-sm font-semibold text-white mb-4">{category}</h4>
                 <ul className="space-y-3">
                   {links.map((link) => (
-                    <li key={link}>
-                      <a href="#" className="text-sm text-[#8892B0] hover:text-white transition-colors duration-200 cursor-pointer">{link}</a>
+                    <li key={link.label}>
+                      <a href={link.href} onClick={(e) => handleFooterClick(e, link.href)} className="text-sm text-[#8892B0] hover:text-white transition-colors duration-200 cursor-pointer">{link.label}</a>
                     </li>
                   ))}
                 </ul>
