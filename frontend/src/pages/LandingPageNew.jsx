@@ -46,7 +46,7 @@ const Navbar = () => {
     { label: 'Home', href: '#hero' },
     { label: 'Markets', href: '#markets' },
     { label: 'Solutions', href: '#solutions' },
-    { label: 'Prop Funding', href: '#prop-funding' },
+    { label: 'Prop Funding', href: '/prop-funding' },
     { label: 'Company', href: '#company' },
     { label: 'Support', href: '#support' },
   ]
@@ -70,6 +70,12 @@ const Navbar = () => {
   }, [])
 
   const scrollTo = useCallback((e, href) => {
+    // If it's a page link (not a hash), let it navigate normally
+    if (!href.startsWith('#')) {
+      setMobileOpen(false)
+      return // Don't prevent default, let the browser navigate
+    }
+    
     e.preventDefault()
     const id = href.slice(1)
     
