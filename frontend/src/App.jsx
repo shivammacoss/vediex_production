@@ -43,6 +43,7 @@ import AdminBonusManagement from './pages/AdminBonusManagement'
 import AdminBannerManagement from './pages/AdminBannerManagement'
 import AdminBookManagement from './pages/AdminBookManagement'
 import LandingPage from './pages/LandingPageNew'
+import PropFundingPage from './pages/PropFundingPage'
 import EmployeeLogin from './pages/EmployeeLogin'
 import AdminProfile from './pages/AdminProfile'
 import PrivacyPolicy from './pages/PrivacyPolicy'
@@ -54,6 +55,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/prop-funding" element={<PropFundingPage />} />
         <Route path="/login" element={<Navigate to="/user/login" replace />} />
         <Route path="/signup" element={<Navigate to="/user/signup" replace />} />
         <Route path="/user/signup" element={<Signup />} />
