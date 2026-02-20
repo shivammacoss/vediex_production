@@ -252,21 +252,43 @@ const MobileTradingApp = () => {
       const data = await res.json()
       setAccounts(data.accounts || [])
       if (data.accounts?.length > 0) {
-        // If account ID is passed in URL, select that account
+        // Priority: 1. URL param, 2. localStorage saved account, 3. first account
         if (accountIdFromUrl) {
           const accountFromUrl = data.accounts.find(acc => acc._id === accountIdFromUrl)
           if (accountFromUrl) {
             setSelectedAccount(accountFromUrl)
+            localStorage.setItem('selectedAccountId', accountFromUrl._id)
           } else {
             setSelectedAccount(data.accounts[0])
+            localStorage.setItem('selectedAccountId', data.accounts[0]._id)
           }
         } else {
-          setSelectedAccount(data.accounts[0])
+          // Try to restore from localStorage
+          const savedAccountId = localStorage.getItem('selectedAccountId')
+          if (savedAccountId) {
+            const savedAccount = data.accounts.find(acc => acc._id === savedAccountId)
+            if (savedAccount) {
+              setSelectedAccount(savedAccount)
+            } else {
+              setSelectedAccount(data.accounts[0])
+              localStorage.setItem('selectedAccountId', data.accounts[0]._id)
+            }
+          } else {
+            setSelectedAccount(data.accounts[0])
+            localStorage.setItem('selectedAccountId', data.accounts[0]._id)
+          }
         }
       }
     } catch (e) {}
     setLoading(false)
   }
+
+  // Save selected account to localStorage whenever it changes
+  useEffect(() => {
+    if (selectedAccount?._id) {
+      localStorage.setItem('selectedAccountId', selectedAccount._id)
+    }
+  }, [selectedAccount?._id])
 
   const fetchOpenTrades = async () => {
     if (!selectedAccount) return
@@ -584,21 +606,26 @@ const MobileTradingApp = () => {
       {/* Account Selector Card */}
       {selectedAccount && (
         <div className="bg-gradient-to-br from-accent-green/20 to-dark-800 rounded-xl p-4 mb-4 border border-accent-green/30">
-          {/* Account Header - Click to go to Accounts page */}
-          <div 
-            className="flex items-center justify-between mb-3 cursor-pointer"
-            onClick={() => navigate('/account')}
-          >
-            <div className="flex items-center gap-2">
+          {/* Account Header - Click to toggle dropdown, arrow to go to Accounts page */}
+          <div className="flex items-center justify-between mb-3">
+            <div 
+              className="flex items-center gap-2 cursor-pointer flex-1"
+              onClick={() => setShowAccountSelector(!showAccountSelector)}
+            >
               <div className="w-8 h-8 bg-accent-green/30 rounded-full flex items-center justify-center">
                 <User size={16} className="text-accent-green" />
               </div>
               <div>
                 <p className="text-white font-medium text-sm">{selectedAccount.accountId}</p>
-                <p className="text-gray-400 text-xs">{selectedAccount.accountType || 'Standard'}</p>
+                <p className="text-gray-400 text-xs">{selectedAccount.accountType || 'Standard'} • {selectedAccount.leverage || '1:100'}</p>
               </div>
             </div>
-            <ChevronRight size={18} className={`text-gray-400 transition-transform ${showAccountSelector ? 'rotate-90' : ''}`} />
+            <button 
+              onClick={() => navigate('/account')}
+              className="p-1 hover:bg-dark-700 rounded-lg transition-colors"
+            >
+              <ChevronRight size={18} className="text-gray-400" />
+            </button>
           </div>
           
           {/* Account Selector Dropdown */}
