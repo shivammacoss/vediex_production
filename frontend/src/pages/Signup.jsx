@@ -44,7 +44,8 @@ const countries = [
 const Signup = () => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const referralCode = searchParams.get('ref')
+  const urlReferralCode = searchParams.get('ref')
+  const [referralCodeLocked, setReferralCodeLocked] = useState(!!urlReferralCode)
   const [activeTab, setActiveTab] = useState('signup')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -66,7 +67,8 @@ const Signup = () => {
     email: '',
     phone: '',
     countryCode: '+91',
-    password: ''
+    password: '',
+    referralCode: urlReferralCode || ''
   })
   
   // Detect mobile view
@@ -226,7 +228,7 @@ const Signup = () => {
       // Create account (OTP verified or not required)
       const signupData = {
         ...formData,
-        referralCode: referralCode || undefined,
+        referralCode: formData.referralCode || undefined,
         otpVerified: otpVerified
       }
       
@@ -235,17 +237,17 @@ const Signup = () => {
       localStorage.setItem('user', JSON.stringify(response.user))
       
       // Also call register-referral API for backward compatibility
-      if (referralCode && response.user?._id) {
+      if (formData.referralCode && response.user?._id) {
         try {
           await fetch(`${API_URL}/ib/register-referral`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               userId: response.user._id,
-              referralCode: referralCode
+              referralCode: formData.referralCode
             })
           })
-          console.log('Referral registered:', referralCode)
+          console.log('Referral registered:', formData.referralCode)
         } catch (refError) {
           console.error('Error registering referral:', refError)
         }
@@ -475,6 +477,22 @@ const Signup = () => {
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
+            </div>
+
+            {/* Referral Code field - optional */}
+            <div className="relative">
+              <input
+                type="text"
+                name="referralCode"
+                placeholder="Referral code (optional)"
+                value={formData.referralCode}
+                onChange={handleChange}
+                disabled={referralCodeLocked}
+                className={`w-full bg-dark-600 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 transition-colors ${referralCodeLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
+              />
+              {referralCodeLocked && (
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-green-500">✓ Applied</span>
+              )}
             </div>
 
             {/* Error message */}
