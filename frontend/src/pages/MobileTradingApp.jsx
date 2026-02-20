@@ -5,7 +5,7 @@ import {
   Copy, Users, HelpCircle, FileText, UserCircle, LogOut, Wallet,
   X, ChevronRight, Search, Star, ArrowUp, ArrowDown, Clock,
   Plus, Minus, Settings, RefreshCw, ChevronDown, Bell, User,
-  ArrowDownCircle, ArrowUpCircle, Check, Pencil, Trash2
+  ArrowDownCircle, ArrowUpCircle, Check, Pencil, Trash2, Trophy
 } from 'lucide-react'
 import priceService from '../services/priceService'
 import priceStreamService from '../services/priceStream'
@@ -584,10 +584,10 @@ const MobileTradingApp = () => {
       {/* Account Selector Card */}
       {selectedAccount && (
         <div className="bg-gradient-to-br from-accent-green/20 to-dark-800 rounded-xl p-4 mb-4 border border-accent-green/30">
-          {/* Account Header with Switch */}
+          {/* Account Header - Click to go to Accounts page */}
           <div 
             className="flex items-center justify-between mb-3 cursor-pointer"
-            onClick={() => setShowAccountSelector(!showAccountSelector)}
+            onClick={() => navigate('/account')}
           >
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-accent-green/30 rounded-full flex items-center justify-center">
@@ -622,32 +622,60 @@ const MobileTradingApp = () => {
             </div>
           )}
           
-          {/* Balance & Equity */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Balance & Equity Row */}
+          <div className="grid grid-cols-2 gap-3 mb-2">
             <div>
               <p className="text-gray-400 text-xs">Balance</p>
-              <p className="text-white text-xl font-bold">${(accountSummary.balance || 0).toFixed(2)}</p>
+              <p className="text-white text-lg font-bold">${(accountSummary.balance || 0).toFixed(2)}</p>
             </div>
-            <div>
+            <div className="text-right">
               <p className="text-gray-400 text-xs">Equity</p>
-              <p className={`text-xl font-bold ${totalFloatingPnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              <p className={`text-lg font-bold ${totalFloatingPnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                 ${realTimeEquity.toFixed(2)}
               </p>
             </div>
           </div>
+
+          {/* Floating P&L & Free Margin Row */}
+          <div className="grid grid-cols-2 gap-3 mb-2 pt-2 border-t border-gray-700/50">
+            <div>
+              <p className="text-gray-400 text-xs">Floating P&L</p>
+              <p className={`text-sm font-semibold ${totalFloatingPnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {totalFloatingPnl >= 0 ? '+' : ''}${totalFloatingPnl.toFixed(2)}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-gray-400 text-xs">Free Margin</p>
+              <p className="text-green-500 text-sm font-semibold">${(accountSummary.freeMargin || 0).toFixed(2)}</p>
+            </div>
+          </div>
+
+          {/* Today's P&L & Used Margin Row */}
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <p className="text-gray-400 text-xs">Today's P&L</p>
+              <p className={`text-sm font-semibold ${(accountSummary.todayPnl || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {(accountSummary.todayPnl || 0) >= 0 ? '+' : ''}${(accountSummary.todayPnl || 0).toFixed(2)}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-gray-400 text-xs">Used Margin</p>
+              <p className="text-gray-300 text-sm font-semibold">${(accountSummary.usedMargin || 0).toFixed(2)}</p>
+            </div>
+          </div>
           
           {/* Deposit/Withdraw Buttons */}
-          <div className="flex gap-2 mt-3">
+          <div className="flex gap-2">
             <button 
               onClick={() => navigate('/wallet')}
-              className="flex-1 flex items-center justify-center gap-1 py-2 bg-accent-green text-black rounded-lg text-sm font-medium"
+              className="flex-1 flex items-center justify-center gap-1 py-2.5 bg-accent-green text-black rounded-lg text-sm font-medium"
             >
               <ArrowDownCircle size={16} />
               Deposit
             </button>
             <button 
               onClick={() => navigate('/wallet')}
-              className="flex-1 flex items-center justify-center gap-1 py-2 bg-dark-700 text-white rounded-lg text-sm font-medium border border-gray-600"
+              className="flex-1 flex items-center justify-center gap-1 py-2.5 bg-dark-700 text-white rounded-lg text-sm font-medium border border-gray-600"
             >
               <ArrowUpCircle size={16} />
               Withdraw
@@ -658,8 +686,8 @@ const MobileTradingApp = () => {
 
       {/* Quick Actions - 2 rows */}
       <div className="grid grid-cols-4 gap-2 mb-4">
-        <button onClick={() => navigate('/account')} className="flex flex-col items-center p-2.5 bg-dark-800 rounded-xl">
-          <User size={20} className="text-accent-green mb-1" />
+        <button onClick={() => navigate('/account')} className="flex flex-col items-center p-2.5 bg-dark-800 rounded-xl border border-gray-700">
+          <User size={20} className="text-blue-400 mb-1" />
           <span className="text-white text-[10px]">Account</span>
         </button>
         <button onClick={() => setActiveTab('market')} className="flex flex-col items-center p-2.5 bg-dark-800 rounded-xl">
@@ -686,9 +714,9 @@ const MobileTradingApp = () => {
           <Users size={20} className="text-pink-500 mb-1" />
           <span className="text-white text-[10px]">IB</span>
         </button>
-        <button onClick={() => setShowMoreMenu(true)} className="flex flex-col items-center p-2.5 bg-dark-800 rounded-xl">
-          <MoreHorizontal size={20} className="text-gray-400 mb-1" />
-          <span className="text-white text-[10px]">More</span>
+        <button onClick={() => navigate('/dashboard')} className="flex flex-col items-center p-2.5 bg-dark-800 rounded-xl border border-yellow-500/30">
+          <Trophy size={20} className="text-yellow-500 mb-1" />
+          <span className="text-white text-[10px]">Challenge</span>
         </button>
       </div>
 
