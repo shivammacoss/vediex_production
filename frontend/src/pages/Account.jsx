@@ -98,6 +98,12 @@ const Account = () => {
   ]
 
   useEffect(() => {
+    // Check if tab parameter is passed in URL
+    const tabParam = searchParams.get('tab')
+    if (tabParam && ['Real', 'Demo', 'Challenge', 'Archived'].includes(tabParam)) {
+      setActiveTab(tabParam)
+    }
+    
     // Check if redirected from failed challenge
     const failed = searchParams.get('failed')
     const reason = searchParams.get('reason')

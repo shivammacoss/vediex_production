@@ -714,7 +714,7 @@ const MobileTradingApp = () => {
           <Users size={20} className="text-pink-500 mb-1" />
           <span className="text-white text-[10px]">IB</span>
         </button>
-        <button onClick={() => navigate('/dashboard')} className="flex flex-col items-center p-2.5 bg-dark-800 rounded-xl border border-yellow-500/30">
+        <button onClick={() => navigate('/account?tab=Challenge')} className="flex flex-col items-center p-2.5 bg-dark-800 rounded-xl border border-yellow-500/30">
           <Trophy size={20} className="text-yellow-500 mb-1" />
           <span className="text-white text-[10px]">Challenge</span>
         </button>
