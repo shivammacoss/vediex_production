@@ -15,13 +15,16 @@ const MobileTradingApp = () => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const accountIdFromUrl = searchParams.get('account')
-  const [activeTab, setActiveTab] = useState(accountIdFromUrl ? 'trade' : 'home')
+  const tabFromUrl = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState(tabFromUrl || 'home')
   const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [showOrderPanel, setShowOrderPanel] = useState(false)
   const [selectedInstrument, setSelectedInstrument] = useState(null)
   const [user, setUser] = useState(null)
   const [accounts, setAccounts] = useState([])
+  const [challengeAccounts, setChallengeAccounts] = useState([])
   const [selectedAccount, setSelectedAccount] = useState(null)
+  const [isChallengeMode, setIsChallengeMode] = useState(false)
   const [openTrades, setOpenTrades] = useState([])
   const [pendingOrders, setPendingOrders] = useState([])
   const [tradeHistory, setTradeHistory] = useState([])
@@ -105,6 +108,7 @@ const MobileTradingApp = () => {
     setUser(userData)
     fetchInstruments() // Fetch instruments from API
     fetchAccounts(userData._id)
+    fetchChallengeAccounts(userData._id)
     
     // Initial price fetch
     fetchLivePrices()
@@ -251,44 +255,75 @@ const MobileTradingApp = () => {
       const res = await fetch(`${API_URL}/trading-accounts/user/${userId}`)
       const data = await res.json()
       setAccounts(data.accounts || [])
-      if (data.accounts?.length > 0) {
-        // Priority: 1. URL param, 2. localStorage saved account, 3. first account
-        if (accountIdFromUrl) {
-          const accountFromUrl = data.accounts.find(acc => acc._id === accountIdFromUrl)
-          if (accountFromUrl) {
-            setSelectedAccount(accountFromUrl)
-            localStorage.setItem('selectedAccountId', accountFromUrl._id)
+      
+      // Don't auto-select if URL has account param (will be handled after challenge accounts load)
+      if (!accountIdFromUrl && data.accounts?.length > 0) {
+        // Try to restore from localStorage
+        const savedAccountId = localStorage.getItem('selectedAccountId')
+        const savedIsChallenge = localStorage.getItem('selectedAccountIsChallenge') === 'true'
+        
+        if (savedAccountId && !savedIsChallenge) {
+          const savedAccount = data.accounts.find(acc => acc._id === savedAccountId)
+          if (savedAccount) {
+            setSelectedAccount(savedAccount)
+            setIsChallengeMode(false)
           } else {
             setSelectedAccount(data.accounts[0])
+            setIsChallengeMode(false)
             localStorage.setItem('selectedAccountId', data.accounts[0]._id)
+            localStorage.setItem('selectedAccountIsChallenge', 'false')
           }
-        } else {
-          // Try to restore from localStorage
-          const savedAccountId = localStorage.getItem('selectedAccountId')
-          if (savedAccountId) {
-            const savedAccount = data.accounts.find(acc => acc._id === savedAccountId)
-            if (savedAccount) {
-              setSelectedAccount(savedAccount)
-            } else {
-              setSelectedAccount(data.accounts[0])
-              localStorage.setItem('selectedAccountId', data.accounts[0]._id)
-            }
-          } else {
-            setSelectedAccount(data.accounts[0])
-            localStorage.setItem('selectedAccountId', data.accounts[0]._id)
-          }
+        } else if (!savedAccountId) {
+          setSelectedAccount(data.accounts[0])
+          setIsChallengeMode(false)
+          localStorage.setItem('selectedAccountId', data.accounts[0]._id)
+          localStorage.setItem('selectedAccountIsChallenge', 'false')
         }
       }
     } catch (e) {}
     setLoading(false)
   }
 
+  const fetchChallengeAccounts = async (userId) => {
+    try {
+      const res = await fetch(`${API_URL}/prop/my-accounts/${userId}`)
+      const data = await res.json()
+      if (data.success) {
+        setChallengeAccounts(data.accounts || [])
+        
+        // Check if URL param points to a challenge account
+        if (accountIdFromUrl) {
+          const challengeFromUrl = data.accounts?.find(acc => acc._id === accountIdFromUrl)
+          if (challengeFromUrl) {
+            setSelectedAccount(challengeFromUrl)
+            setIsChallengeMode(true)
+            localStorage.setItem('selectedAccountId', challengeFromUrl._id)
+            localStorage.setItem('selectedAccountIsChallenge', 'true')
+            return
+          }
+        }
+        
+        // Check if saved account is a challenge account
+        const savedAccountId = localStorage.getItem('selectedAccountId')
+        const savedIsChallenge = localStorage.getItem('selectedAccountIsChallenge') === 'true'
+        if (savedAccountId && savedIsChallenge) {
+          const savedChallenge = data.accounts?.find(acc => acc._id === savedAccountId)
+          if (savedChallenge) {
+            setSelectedAccount(savedChallenge)
+            setIsChallengeMode(true)
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
   // Save selected account to localStorage whenever it changes
   useEffect(() => {
     if (selectedAccount?._id) {
       localStorage.setItem('selectedAccountId', selectedAccount._id)
+      localStorage.setItem('selectedAccountIsChallenge', isChallengeMode ? 'true' : 'false')
     }
-  }, [selectedAccount?._id])
+  }, [selectedAccount?._id, isChallengeMode])
 
   const fetchOpenTrades = async () => {
     if (!selectedAccount) return
@@ -331,6 +366,34 @@ const MobileTradingApp = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
     navigate('/user/login')
+  }
+
+  const handleResetDemo = async () => {
+    if (!selectedAccount) return
+    if (!confirm('Are you sure you want to reset this demo account? All open trades will be closed and balance will be reset.')) {
+      return
+    }
+    try {
+      const res = await fetch(`${API_URL}/trading-accounts/reset-demo/${selectedAccount._id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      const data = await res.json()
+      if (data.success) {
+        showNotification('Demo account reset successfully', 'success')
+        // Refresh account data
+        if (user?._id) {
+          fetchAccounts(user._id)
+        }
+        fetchAccountSummary()
+        fetchOpenTrades()
+        fetchTradeHistory()
+      } else {
+        showNotification(data.message || 'Failed to reset demo account', 'error')
+      }
+    } catch (e) {
+      showNotification('Failed to reset demo account', 'error')
+    }
   }
 
   const openOrderPanel = (instrument) => {
@@ -605,23 +668,29 @@ const MobileTradingApp = () => {
 
       {/* Account Selector Card */}
       {selectedAccount && (
-        <div className="bg-gradient-to-br from-accent-green/20 to-dark-800 rounded-xl p-4 mb-4 border border-accent-green/30">
+        <div className={`rounded-xl p-4 mb-4 border ${isChallengeMode ? 'bg-gradient-to-br from-yellow-500/20 to-dark-800 border-yellow-500/30' : 'bg-gradient-to-br from-accent-green/20 to-dark-800 border-accent-green/30'}`}>
           {/* Account Header - Click to toggle dropdown, arrow to go to Accounts page */}
           <div className="flex items-center justify-between mb-3">
             <div 
               className="flex items-center gap-2 cursor-pointer flex-1"
               onClick={() => setShowAccountSelector(!showAccountSelector)}
             >
-              <div className="w-8 h-8 bg-accent-green/30 rounded-full flex items-center justify-center">
-                <User size={16} className="text-accent-green" />
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isChallengeMode ? 'bg-yellow-500/30' : 'bg-accent-green/30'}`}>
+                {isChallengeMode ? <Trophy size={16} className="text-yellow-500" /> : <User size={16} className="text-accent-green" />}
               </div>
               <div>
                 <p className="text-white font-medium text-sm">{selectedAccount.accountId}</p>
-                <p className="text-gray-400 text-xs">{selectedAccount.accountType || 'Standard'} • {selectedAccount.leverage || '1:100'}</p>
+                <p className="text-gray-400 text-xs">
+                  {isChallengeMode ? (
+                    <span className="text-yellow-500">Challenge • {selectedAccount.challengeId?.name || 'Prop Trading'}</span>
+                  ) : (
+                    <>{selectedAccount.accountType || 'Standard'} • {selectedAccount.leverage || '1:100'}</>
+                  )}
+                </p>
               </div>
             </div>
             <button 
-              onClick={() => navigate('/account')}
+              onClick={() => navigate(isChallengeMode ? '/account?tab=Challenge' : '/account')}
               className="p-1 hover:bg-dark-700 rounded-lg transition-colors"
             >
               <ChevronRight size={18} className="text-gray-400" />
@@ -629,23 +698,51 @@ const MobileTradingApp = () => {
           </div>
           
           {/* Account Selector Dropdown */}
-          {showAccountSelector && accounts.length > 1 && (
-            <div className="mb-3 border-t border-gray-700 pt-3">
-              <p className="text-gray-500 text-xs mb-2">Switch Account</p>
-              <div className="space-y-2">
-                {accounts.map(acc => (
-                  <button
-                    key={acc._id}
-                    onClick={() => { setSelectedAccount(acc); setShowAccountSelector(false) }}
-                    className={`w-full flex items-center justify-between p-2 rounded-lg ${
-                      selectedAccount._id === acc._id ? 'bg-accent-green/20 border border-accent-green/50' : 'bg-dark-700'
-                    }`}
-                  >
-                    <span className="text-white text-sm">{acc.accountId}</span>
-                    {selectedAccount._id === acc._id && <Check size={14} className="text-accent-green" />}
-                  </button>
-                ))}
-              </div>
+          {showAccountSelector && (accounts.length > 0 || challengeAccounts.length > 0) && (
+            <div className="mb-3 border-t border-gray-700 pt-3 max-h-48 overflow-y-auto">
+              {/* Regular Accounts */}
+              {accounts.length > 0 && (
+                <>
+                  <p className="text-gray-500 text-xs mb-2">Trading Accounts</p>
+                  <div className="space-y-2 mb-3">
+                    {accounts.map(acc => (
+                      <button
+                        key={acc._id}
+                        onClick={() => { setSelectedAccount(acc); setIsChallengeMode(false); setShowAccountSelector(false) }}
+                        className={`w-full flex items-center justify-between p-2 rounded-lg ${
+                          selectedAccount._id === acc._id && !isChallengeMode ? 'bg-accent-green/20 border border-accent-green/50' : 'bg-dark-700'
+                        }`}
+                      >
+                        <span className="text-white text-sm">{acc.accountId}</span>
+                        {selectedAccount._id === acc._id && !isChallengeMode && <Check size={14} className="text-accent-green" />}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+              {/* Challenge Accounts */}
+              {challengeAccounts.length > 0 && (
+                <>
+                  <p className="text-yellow-500 text-xs mb-2">Challenge Accounts</p>
+                  <div className="space-y-2">
+                    {challengeAccounts.map(acc => (
+                      <button
+                        key={acc._id}
+                        onClick={() => { setSelectedAccount(acc); setIsChallengeMode(true); setShowAccountSelector(false) }}
+                        className={`w-full flex items-center justify-between p-2 rounded-lg ${
+                          selectedAccount._id === acc._id && isChallengeMode ? 'bg-yellow-500/20 border border-yellow-500/50' : 'bg-dark-700'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Trophy size={14} className="text-yellow-500" />
+                          <span className="text-white text-sm">{acc.accountId}</span>
+                        </div>
+                        {selectedAccount._id === acc._id && isChallengeMode && <Check size={14} className="text-yellow-500" />}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
           
@@ -691,23 +788,44 @@ const MobileTradingApp = () => {
             </div>
           </div>
           
-          {/* Deposit/Withdraw Buttons */}
-          <div className="flex gap-2">
+          {/* Buttons based on account type */}
+          {isChallengeMode ? (
+            // Challenge account - show Start Trading button
             <button 
-              onClick={() => navigate('/wallet')}
-              className="flex-1 flex items-center justify-center gap-1 py-2.5 bg-accent-green text-black rounded-lg text-sm font-medium"
+              onClick={() => setActiveTab('trade')}
+              className="w-full flex items-center justify-center gap-1 py-2.5 bg-yellow-500 text-black rounded-lg text-sm font-medium"
             >
-              <ArrowDownCircle size={16} />
-              Deposit
+              <TrendingUp size={16} />
+              Start Trading
             </button>
+          ) : selectedAccount.isDemo || selectedAccount.accountTypeId?.isDemo ? (
+            // Demo account - show Reset button only
             <button 
-              onClick={() => navigate('/wallet')}
-              className="flex-1 flex items-center justify-center gap-1 py-2.5 bg-dark-700 text-white rounded-lg text-sm font-medium border border-gray-600"
+              onClick={handleResetDemo}
+              className="w-full flex items-center justify-center gap-1 py-2.5 bg-yellow-500 text-black rounded-lg text-sm font-medium"
             >
-              <ArrowUpCircle size={16} />
-              Withdraw
+              <RefreshCw size={16} />
+              Reset Demo Account
             </button>
-          </div>
+          ) : (
+            // Live account - show Deposit/Withdraw buttons
+            <div className="flex gap-2">
+              <button 
+                onClick={() => navigate('/wallet')}
+                className="flex-1 flex items-center justify-center gap-1 py-2.5 bg-accent-green text-black rounded-lg text-sm font-medium"
+              >
+                <ArrowDownCircle size={16} />
+                Deposit
+              </button>
+              <button 
+                onClick={() => navigate('/wallet')}
+                className="flex-1 flex items-center justify-center gap-1 py-2.5 bg-dark-700 text-white rounded-lg text-sm font-medium border border-gray-600"
+              >
+                <ArrowUpCircle size={16} />
+                Withdraw
+              </button>
+            </div>
+          )}
         </div>
       )}
 
