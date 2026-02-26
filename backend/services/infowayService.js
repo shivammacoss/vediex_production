@@ -24,6 +24,7 @@ let onConnectionChange = null
 
 // Connection state
 let isConnected = false
+let priceSource = 'LOCAL' // 'LOCAL' or 'CORECEN'
 const connections = {}
 let heartbeatIntervals = {}
 
@@ -163,20 +164,21 @@ function generateTraceId() {
   })
 }
 
-// Initialize broker service (no external connections needed - broker provides data)
+// Initialize broker service (prices received from Corecen LP)
 function connect() {
   console.log('[Broker] Initializing price service...')
-  console.log('[Broker] Data feed provided by broker - no external API required')
+  console.log('[Broker] Prices will be received from Corecen LP')
 
   // Initialize symbols from static lists
   initializeSymbols()
 
-  // Mark as connected (broker handles the actual data feed)
+  // Mark as connected (will receive prices from Corecen)
   isConnected = true
+  priceSource = 'CORECEN'
   if (onConnectionChange) onConnectionChange(true)
   
-  console.log('[Broker] Price service ready')
-  console.log(`[Broker] Forex: ${dynamicSymbols.forex.length}, Crypto: ${dynamicSymbols.crypto.length}, Stocks: ${dynamicSymbols.stocks.length}, Metals: ${dynamicSymbols.metals.length}, Energy: ${dynamicSymbols.energy.length}`)
+  console.log('[Broker] Price service ready - waiting for Corecen LP feed')
+  console.log(`[Broker] Supported symbols - Forex: ${dynamicSymbols.forex.length}, Crypto: ${dynamicSymbols.crypto.length}, Stocks: ${dynamicSymbols.stocks.length}, Metals: ${dynamicSymbols.metals.length}, Energy: ${dynamicSymbols.energy.length}`)
 }
 
 function disconnect() {
@@ -224,7 +226,37 @@ function isWebSocketConnected() {
 function getConnectionStatus() {
   return {
     isConnected,
-    priceCount: priceCache.size
+    priceCount: priceCache.size,
+    priceSource
+  }
+}
+
+/**
+ * Update price from Corecen LP feed
+ * Called by LP routes when receiving price updates
+ */
+function updatePrice(symbol, priceData) {
+  const { bid, ask, spread, timestamp, source } = priceData
+  
+  // Store in cache
+  priceCache.set(symbol, {
+    bid,
+    ask,
+    spread: spread || (ask - bid),
+    timestamp: timestamp || Date.now(),
+    source: source || 'CORECEN'
+  })
+  
+  // Mark as connected if we're receiving prices
+  if (!isConnected) {
+    isConnected = true
+    priceSource = 'CORECEN'
+    if (onConnectionChange) onConnectionChange(true)
+  }
+  
+  // Notify subscribers (for WebSocket broadcast)
+  if (onPriceUpdate) {
+    onPriceUpdate(symbol, priceCache.get(symbol))
   }
 }
 
@@ -265,6 +297,7 @@ export default {
   setOnConnectionChange,
   isWebSocketConnected,
   getConnectionStatus,
+  updatePrice,
   categorizeSymbol,
   getSymbolName,
   getDynamicSymbols,
