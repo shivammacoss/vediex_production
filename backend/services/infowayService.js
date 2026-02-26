@@ -1,21 +1,8 @@
-// Infoway.io Price Service - Real-time market data via WebSocket
+// Broker Price Service - Real-time market data via WebSocket
 // Supports: Forex, Crypto, US Stocks, Metals, Energy
-// Docs: https://docs.infoway.io/en-docs
+// Data feed handled by broker - no API key required
 
 import WebSocket from 'ws'
-import dotenv from 'dotenv'
-
-dotenv.config()
-
-const INFOWAY_API_KEY = process.env.INFOWAY_API_KEY || ''
-const API_BASE_URL = 'https://data.infoway.io'
-
-// WebSocket endpoints for different asset classes
-const WS_ENDPOINTS = {
-  stock: `wss://data.infoway.io/ws?business=stock&apikey=${INFOWAY_API_KEY}`,
-  crypto: `wss://data.infoway.io/ws?business=crypto&apikey=${INFOWAY_API_KEY}`,
-  common: `wss://data.infoway.io/ws?business=common&apikey=${INFOWAY_API_KEY}` // Forex, Metals, Energy
-}
 
 // Protocol codes
 const PROTOCOL = {
@@ -106,49 +93,16 @@ let ALL_SYMBOLS = []
 const CRYPTO_INTERNAL_TO_INFOWAY = {}
 const CRYPTO_INFOWAY_TO_INTERNAL = {}
 
-// Fetch symbols from Infoway API
-async function fetchSymbolsFromAPI(type) {
-  try {
-    const url = `${API_BASE_URL}/common/basic/symbols?type=${type}&apikey=${INFOWAY_API_KEY}`
-    const response = await fetch(url)
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    const data = await response.json()
-    if (data.ret === 200 && data.data) {
-      return data.data.map(item => ({
-        symbol: item.symbol,
-        name: item.name_en || item.symbol
-      }))
-    }
-    return []
-  } catch (e) {
-    console.log(`[Infoway] Failed to fetch ${type} symbols:`, e.message)
-    return []
-  }
-}
-
-// Fetch all symbols from Infoway API
-async function fetchAllSymbolsFromAPI() {
-  console.log('[Infoway] Fetching symbols from API...')
+// Initialize symbols from static lists (broker provides data feed)
+function initializeSymbols() {
+  console.log('[Broker] Initializing symbols from static lists...')
   
-  const [forex, crypto, stocks, metals, energy] = await Promise.all([
-    fetchSymbolsFromAPI('FOREX'),
-    fetchSymbolsFromAPI('CRYPTO'),
-    fetchSymbolsFromAPI('STOCK_US'),
-    fetchSymbolsFromAPI('METAL'),
-    fetchSymbolsFromAPI('ENERGY')
-  ])
-  
-  // Update dynamic symbols
-  dynamicSymbols.forex = forex.length > 0 ? forex.map(s => s.symbol) : FOREX_SYMBOLS
-  dynamicSymbols.crypto = crypto.length > 0 ? crypto.map(s => s.symbol) : CRYPTO_SYMBOLS
-  dynamicSymbols.stocks = stocks.length > 0 ? stocks.map(s => s.symbol) : STOCK_SYMBOLS
-  dynamicSymbols.metals = metals.length > 0 ? metals.map(s => s.symbol) : METAL_SYMBOLS
-  dynamicSymbols.energy = energy.length > 0 ? energy.map(s => s.symbol) : ENERGY_SYMBOLS
-  
-  // Store symbol names
-  ;[...forex, ...crypto, ...stocks, ...metals, ...energy].forEach(item => {
-    symbolNames[item.symbol] = item.name
-  })
+  // Use static symbol lists
+  dynamicSymbols.forex = FOREX_SYMBOLS
+  dynamicSymbols.crypto = CRYPTO_SYMBOLS
+  dynamicSymbols.stocks = STOCK_SYMBOLS
+  dynamicSymbols.metals = METAL_SYMBOLS
+  dynamicSymbols.energy = ENERGY_SYMBOLS
   
   // Build crypto mappings
   dynamicSymbols.crypto.forEach(s => {
@@ -196,8 +150,8 @@ async function fetchAllSymbolsFromAPI() {
   
   ALL_SYMBOLS = Array.from(allSymbols)
   
-  console.log(`[Infoway] Loaded symbols - Forex: ${dynamicSymbols.forex.length}, Crypto: ${dynamicSymbols.crypto.length}, Stocks: ${dynamicSymbols.stocks.length}, Metals: ${dynamicSymbols.metals.length}, Energy: ${dynamicSymbols.energy.length}`)
-  console.log(`[Infoway] Total symbols: ${ALL_SYMBOLS.length}`)
+  console.log(`[Broker] Loaded symbols - Forex: ${dynamicSymbols.forex.length}, Crypto: ${dynamicSymbols.crypto.length}, Stocks: ${dynamicSymbols.stocks.length}, Metals: ${dynamicSymbols.metals.length}, Energy: ${dynamicSymbols.energy.length}`)
+  console.log(`[Broker] Total symbols: ${ALL_SYMBOLS.length}`)
 }
 
 // Generate unique trace ID
@@ -209,247 +163,25 @@ function generateTraceId() {
   })
 }
 
-// Create WebSocket connection for a business type
-function createConnection(businessType, endpoint, symbols) {
-  if (!INFOWAY_API_KEY) {
-    console.log(`[Infoway] Skipping ${businessType} - no API key`)
-    return null
-  }
+// Initialize broker service (no external connections needed - broker provides data)
+function connect() {
+  console.log('[Broker] Initializing price service...')
+  console.log('[Broker] Data feed provided by broker - no external API required')
 
-  console.log(`[Infoway] Connecting to ${businessType}...`)
+  // Initialize symbols from static lists
+  initializeSymbols()
+
+  // Mark as connected (broker handles the actual data feed)
+  isConnected = true
+  if (onConnectionChange) onConnectionChange(true)
   
-  const ws = new WebSocket(endpoint)
-  
-  ws.on('open', () => {
-    console.log(`[Infoway] ${businessType} connected`)
-    
-    // Subscribe to depth data for bid/ask prices
-    const subscribeMsg = {
-      code: PROTOCOL.SUBSCRIBE_DEPTH,
-      trace: generateTraceId(),
-      data: {
-        codes: symbols.join(',')
-      }
-    }
-    
-    ws.send(JSON.stringify(subscribeMsg))
-    console.log(`[Infoway] Subscribed to ${symbols.length} ${businessType} symbols`)
-    
-    // Start heartbeat every 30 seconds
-    heartbeatIntervals[businessType] = setInterval(() => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-          code: PROTOCOL.HEARTBEAT,
-          trace: generateTraceId()
-        }))
-      }
-    }, 30000)
-  })
-
-  ws.on('message', (data) => {
-    try {
-      const dataStr = data.toString()
-      // Skip non-JSON messages (welcome messages, etc.)
-      if (!dataStr.startsWith('{')) {
-        return
-      }
-      const message = JSON.parse(dataStr)
-      
-      // Handle depth push (bid/ask data)
-      if (message.code === PROTOCOL.DEPTH_PUSH && message.data) {
-        const { s: symbol, a: asks, b: bids, t: timestamp } = message.data
-        
-        if (symbol && asks && bids) {
-          // Get best ask (first price in ask array) and best bid (first price in bid array)
-          const bestAsk = parseFloat(asks[0]?.[0]) || 0
-          const bestBid = parseFloat(bids[0]?.[0]) || 0
-          
-          if (bestAsk > 0 && bestBid > 0) {
-            // Convert symbol to internal format if needed
-            let internalSymbol = symbol
-            if (CRYPTO_INFOWAY_TO_INTERNAL[symbol]) {
-              internalSymbol = CRYPTO_INFOWAY_TO_INTERNAL[symbol]
-            }
-            
-            const priceData = {
-              bid: bestBid,
-              ask: bestAsk,
-              mid: (bestBid + bestAsk) / 2,
-              time: timestamp || Date.now()
-            }
-            
-            priceCache.set(internalSymbol, priceData)
-            
-            if (onPriceUpdate) {
-              onPriceUpdate(internalSymbol, priceData)
-            }
-          }
-        }
-      }
-      
-      // Handle trade push (for additional price data)
-      if (message.code === PROTOCOL.TRADE_PUSH && message.data) {
-        const { s: symbol, p: price, t: timestamp } = message.data
-        
-        if (symbol && price) {
-          let internalSymbol = symbol
-          if (CRYPTO_INFOWAY_TO_INTERNAL[symbol]) {
-            internalSymbol = CRYPTO_INFOWAY_TO_INTERNAL[symbol]
-          }
-          
-          // Only update if we don't have depth data
-          if (!priceCache.has(internalSymbol)) {
-            const priceValue = parseFloat(price)
-            const priceData = {
-              bid: priceValue,
-              ask: priceValue,
-              mid: priceValue,
-              time: timestamp || Date.now()
-            }
-            
-            priceCache.set(internalSymbol, priceData)
-            
-            if (onPriceUpdate) {
-              onPriceUpdate(internalSymbol, priceData)
-            }
-          }
-        }
-      }
-      
-      // Handle subscription responses
-      if (message.code === PROTOCOL.DEPTH_RESPONSE || message.code === PROTOCOL.TRADE_RESPONSE) {
-        if (message.msg === 'ok') {
-          console.log(`[Infoway] ${businessType} subscription confirmed`)
-        } else {
-          console.log(`[Infoway] ${businessType} subscription response:`, message.msg)
-        }
-      }
-      
-    } catch (e) {
-      console.error(`[Infoway] ${businessType} parse error:`, e.message)
-    }
-  })
-
-  ws.on('error', (error) => {
-    console.error(`[Infoway] ${businessType} error:`, error.message)
-  })
-
-  ws.on('close', (code, reason) => {
-    console.log(`[Infoway] ${businessType} disconnected (${code}): ${reason}`)
-    
-    // Clear heartbeat
-    if (heartbeatIntervals[businessType]) {
-      clearInterval(heartbeatIntervals[businessType])
-      delete heartbeatIntervals[businessType]
-    }
-    
-    connections[businessType] = null
-    
-    // Check if all connections are down
-    const anyConnected = Object.values(connections).some(conn => conn && conn.readyState === WebSocket.OPEN)
-    if (!anyConnected && isConnected) {
-      isConnected = false
-      if (onConnectionChange) onConnectionChange(false)
-    }
-    
-    // Reconnect after 5 seconds
-    setTimeout(() => {
-      if (!connections[businessType]) {
-        console.log(`[Infoway] Reconnecting ${businessType}...`)
-        connections[businessType] = createConnection(businessType, endpoint, symbols)
-      }
-    }, 5000)
-  })
-
-  return ws
-}
-
-// Connect to all Infoway WebSocket endpoints
-async function connect() {
-  if (!INFOWAY_API_KEY) {
-    console.log('[Infoway] ERROR: Missing API key - set INFOWAY_API_KEY in .env')
-    console.log('[Infoway] Get your API key from https://infoway.io')
-    return
-  }
-
-  console.log('[Infoway] Premium API - Initializing connections...')
-  console.log('[Infoway] Plan: 600 API calls/min, 2 WS connections, 600 subscriptions/WS')
-
-  // Fetch all symbols from Infoway API first
-  await fetchAllSymbolsFromAPI()
-
-  try {
-    // With 2 WS connections limit, we need to be strategic
-    // Connection 1: common (Forex + Metals + Energy) - most important for trading
-    // Connection 2: crypto - popular for trading
-    // Note: Stocks will use REST API fallback if needed (3rd connection not available)
-    
-    const commonSymbols = [...dynamicSymbols.forex, ...dynamicSymbols.metals, ...dynamicSymbols.energy]
-    const cryptoSymbols = dynamicSymbols.crypto.slice(0, 300) // Limit to 300 for WS subscription limit
-    
-    // Connect to common (Forex + Metals + Energy)
-    connections.common = createConnection('common', WS_ENDPOINTS.common, commonSymbols)
-    
-    // Connect to crypto
-    connections.crypto = createConnection('crypto', WS_ENDPOINTS.crypto, cryptoSymbols)
-    
-    console.log('[Infoway] Using 2 WebSocket connections (plan limit)')
-    console.log(`[Infoway] Common (Forex+Metals+Energy): ${commonSymbols.length} symbols`)
-    console.log(`[Infoway] Crypto: ${cryptoSymbols.length} symbols`)
-    console.log(`[Infoway] Stocks: ${dynamicSymbols.stocks.length} symbols (REST API only)`)
-
-    // Wait a bit then check connection status
-    setTimeout(() => {
-      const connectedCount = Object.values(connections).filter(conn => conn && conn.readyState === WebSocket.OPEN).length
-      console.log(`[Infoway] ${connectedCount}/2 WebSocket connections active`)
-      
-      if (connectedCount > 0) {
-        isConnected = true
-        if (onConnectionChange) onConnectionChange(true)
-        console.log('[Infoway] Connected successfully')
-      } else {
-        console.log('[Infoway] WARNING: No connections established - check API key')
-      }
-    }, 3000)
-
-    // Log detailed price cache status after 10 seconds
-    setTimeout(() => {
-      const forexCount = dynamicSymbols.forex.filter(s => priceCache.has(s)).length
-      const cryptoCount = dynamicSymbols.crypto.filter(s => {
-        const internal = s.endsWith('USDT') ? s.replace('USDT', 'USD') : s
-        return priceCache.has(internal) || priceCache.has(s)
-      }).length
-      const metalCount = dynamicSymbols.metals.filter(s => priceCache.has(s)).length
-      const energyCount = dynamicSymbols.energy.filter(s => priceCache.has(s)).length
-      
-      console.log(`[Infoway] Price cache: ${priceCache.size} total symbols`)
-      console.log(`[Infoway] Forex: ${forexCount}/${dynamicSymbols.forex.length}, Crypto: ${cryptoCount}/${dynamicSymbols.crypto.length}`)
-      console.log(`[Infoway] Metals: ${metalCount}/${dynamicSymbols.metals.length}, Energy: ${energyCount}/${dynamicSymbols.energy.length}`)
-    }, 10000)
-
-  } catch (error) {
-    console.error('[Infoway] Connection error:', error.message)
-    isConnected = false
-    setTimeout(connect, 30000)
-  }
+  console.log('[Broker] Price service ready')
+  console.log(`[Broker] Forex: ${dynamicSymbols.forex.length}, Crypto: ${dynamicSymbols.crypto.length}, Stocks: ${dynamicSymbols.stocks.length}, Metals: ${dynamicSymbols.metals.length}, Energy: ${dynamicSymbols.energy.length}`)
 }
 
 function disconnect() {
-  // Clear all heartbeat intervals
-  Object.keys(heartbeatIntervals).forEach(key => {
-    clearInterval(heartbeatIntervals[key])
-  })
-  heartbeatIntervals = {}
-  
-  // Close all connections
-  Object.entries(connections).forEach(([type, ws]) => {
-    if (ws) {
-      ws.close()
-      connections[type] = null
-    }
-  })
   isConnected = false
-  console.log('[Infoway] Disconnected all connections')
+  console.log('[Broker] Price service disconnected')
 }
 
 function getPrice(symbol) {
@@ -492,31 +224,20 @@ function isWebSocketConnected() {
 function getConnectionStatus() {
   return {
     isConnected,
-    connections: Object.entries(connections).map(([type, ws]) => ({
-      type,
-      connected: ws && ws.readyState === WebSocket.OPEN
-    })),
     priceCount: priceCache.size
   }
 }
 
 // Categorize symbol for frontend
 function categorizeSymbol(symbol) {
-  // Check dynamic symbols first
-  if (dynamicSymbols.forex.includes(symbol)) return 'Forex'
-  if (dynamicSymbols.metals.includes(symbol)) return 'Metals'
-  if (dynamicSymbols.energy.includes(symbol)) return 'Energy'
-  if (dynamicSymbols.stocks.includes(symbol) || dynamicSymbols.stocks.includes(symbol + '.US')) return 'Stocks'
-  
-  // Check crypto (both USDT and USD versions)
-  const cryptoInternal = symbol.endsWith('USD') ? symbol.replace('USD', 'USDT') : symbol
-  if (dynamicSymbols.crypto.includes(symbol) || dynamicSymbols.crypto.includes(cryptoInternal)) return 'Crypto'
-  
-  // Fallback to static lists
+  // Check symbol lists
   if (FOREX_SYMBOLS.includes(symbol)) return 'Forex'
   if (METAL_SYMBOLS.includes(symbol)) return 'Metals'
   if (ENERGY_SYMBOLS.includes(symbol)) return 'Energy'
   if (STOCK_SYMBOLS.includes(symbol) || STOCK_SYMBOLS.includes(symbol + '.US')) return 'Stocks'
+  
+  // Check crypto (both USDT and USD versions)
+  const cryptoInternal = symbol.endsWith('USD') ? symbol.replace('USD', 'USDT') : symbol
   if (CRYPTO_SYMBOLS.includes(symbol) || CRYPTO_SYMBOLS.includes(cryptoInternal)) return 'Crypto'
   
   return 'Other'
