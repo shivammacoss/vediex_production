@@ -17,8 +17,8 @@ const getLpSettings = () => {
   return {
     lpApiKey: process.env.LP_API_KEY || '',
     lpApiSecret: process.env.LP_API_SECRET || '',
-    lpApiUrl: process.env.LP_API_URL || 'http://localhost:3001',
-    corecenWsUrl: process.env.CORECEN_WS_URL || process.env.LP_API_URL || 'http://localhost:3001',
+    lpApiUrl: process.env.LP_API_URL || 'https://api.corecen.com',
+    corecenWsUrl: process.env.CORECEN_WS_URL || process.env.LP_API_URL || 'https://api.corecen.com',
     enabled: process.env.LP_ENABLED === 'true'
   }
 }
