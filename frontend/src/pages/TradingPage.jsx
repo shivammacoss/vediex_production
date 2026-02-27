@@ -111,7 +111,7 @@ const TradingPage = () => {
   const [killSwitchTimeLeft, setKillSwitchTimeLeft] = useState('')
   const [globalNotification, setGlobalNotification] = useState('')
 
-  const categories = ['All', 'Starred', 'Forex', 'Metals', 'Commodities', 'Crypto']
+  const categories = ['All', 'Starred', 'Forex', 'Metals', 'Crypto']
 
   const user = JSON.parse(localStorage.getItem('user') || '{}')
 

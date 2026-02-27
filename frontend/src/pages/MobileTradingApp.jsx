@@ -63,7 +63,7 @@ const MobileTradingApp = () => {
   const [notifications, setNotifications] = useState([])
   const notificationIdRef = useRef(0)
 
-  const categories = ['All', 'Starred', 'Forex', 'Metals', 'Commodities', 'Crypto']
+  const categories = ['All', 'Starred', 'Forex', 'Metals', 'Crypto']
 
   // Default starred symbols
   const defaultStarred = ['XAUUSD', 'EURUSD', 'GBPUSD', 'BTCUSD']
