@@ -19,7 +19,11 @@ import {
   BarChart3,
   Shield,
   Zap,
-  History
+  History,
+  Plus,
+  Edit,
+  Save,
+  Link
 } from 'lucide-react'
 import { API_URL } from '../config/api'
 
@@ -38,6 +42,18 @@ const AdminBookManagement = () => {
   const [selectedProvider, setSelectedProvider] = useState('')
   const [auditLogs, setAuditLogs] = useState([])
   const [bookStats, setBookStats] = useState(null)
+  const [showLpForm, setShowLpForm] = useState(false)
+  const [editingProvider, setEditingProvider] = useState(null)
+  const [lpFormData, setLpFormData] = useState({
+    providerName: '',
+    providerCode: '',
+    apiBaseUrl: '',
+    apiKey: '',
+    secretKey: '',
+    accountId: '',
+    isActive: true,
+    isPrimary: false
+  })
   
   // Filters
   const [filterBookType, setFilterBookType] = useState('ALL')
@@ -117,6 +133,69 @@ const AdminBookManagement = () => {
     } catch (error) {
       console.error('Fetch book stats error:', error)
     }
+  }
+
+  // Save LP Provider
+  const handleSaveLpProvider = async () => {
+    setProcessing(true)
+    setError('')
+
+    try {
+      const payload = {
+        ...lpFormData,
+        _id: editingProvider?._id
+      }
+
+      const res = await fetch(`${API_URL}/admin/book/lp-provider`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-ID': adminUser._id
+        },
+        body: JSON.stringify(payload)
+      })
+      const data = await res.json()
+
+      if (data.success) {
+        setSuccess(editingProvider ? 'LP Provider updated!' : 'LP Provider created!')
+        setShowLpForm(false)
+        setEditingProvider(null)
+        setLpFormData({
+          providerName: '',
+          providerCode: '',
+          apiBaseUrl: '',
+          apiKey: '',
+          secretKey: '',
+          accountId: '',
+          isActive: true,
+          isPrimary: false
+        })
+        fetchLpProviders()
+        setTimeout(() => setSuccess(''), 3000)
+      } else {
+        setError(data.message || 'Failed to save LP provider')
+      }
+    } catch (error) {
+      setError('Error saving LP provider')
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  // Edit LP Provider
+  const handleEditProvider = (provider) => {
+    setEditingProvider(provider)
+    setLpFormData({
+      providerName: provider.providerName,
+      providerCode: provider.providerCode,
+      apiBaseUrl: provider.apiBaseUrl,
+      apiKey: '',
+      secretKey: '',
+      accountId: '',
+      isActive: provider.isActive,
+      isPrimary: provider.isPrimary
+    })
+    setShowLpForm(true)
   }
 
   useEffect(() => {
@@ -551,56 +630,198 @@ const AdminBookManagement = () => {
 
       {/* LP Settings Tab */}
       {activeTab === 'settings' && (
-        <div className="bg-dark-800 rounded-xl border border-gray-800 p-6">
-          <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-            <Shield size={20} /> Liquidity Provider Configuration
-          </h3>
-          
-          {lpProviders.length === 0 ? (
-            <div className="text-center py-8">
-              <AlertTriangle size={48} className="text-yellow-500 mx-auto mb-4" />
-              <p className="text-gray-400 mb-4">No LP providers configured yet.</p>
-              <p className="text-gray-500 text-sm">Contact system administrator to configure LP API credentials.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {lpProviders.map((provider) => (
-                <div key={provider._id} className="p-4 bg-dark-700 rounded-lg border border-gray-700">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-white font-medium">{provider.providerName}</h4>
-                      <p className="text-gray-500 text-sm">Code: {provider.providerCode}</p>
-                      <p className="text-gray-500 text-sm">API: {provider.apiBaseUrl}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {provider.isPrimary && (
-                        <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">Primary</span>
-                      )}
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        provider.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                      }`}>
-                        {provider.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="mt-3 grid grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <p className="text-gray-500">Total Orders</p>
-                      <p className="text-white">{provider.stats?.totalOrders || 0}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Successful</p>
-                      <p className="text-green-400">{provider.stats?.successfulOrders || 0}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Failed</p>
-                      <p className="text-red-400">{provider.stats?.failedOrders || 0}</p>
-                    </div>
-                  </div>
+        <div className="space-y-6">
+          {/* Add LP Provider Button */}
+          <div className="flex justify-between items-center">
+            <h3 className="text-white font-semibold flex items-center gap-2">
+              <Shield size={20} /> Liquidity Provider Configuration
+            </h3>
+            <button
+              onClick={() => {
+                setEditingProvider(null)
+                setLpFormData({
+                  providerName: '',
+                  providerCode: '',
+                  apiBaseUrl: '',
+                  apiKey: '',
+                  secretKey: '',
+                  accountId: '',
+                  isActive: true,
+                  isPrimary: false
+                })
+                setShowLpForm(true)
+              }}
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium flex items-center gap-2"
+            >
+              <Plus size={16} /> Add LP Provider
+            </button>
+          </div>
+
+          {/* LP Form */}
+          {showLpForm && (
+            <div className="bg-dark-800 rounded-xl border border-gray-800 p-6">
+              <h4 className="text-white font-semibold mb-4 flex items-center gap-2">
+                <Link size={18} /> {editingProvider ? 'Edit LP Provider' : 'Connect New LP Provider'}
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Provider Name *</label>
+                  <input
+                    type="text"
+                    value={lpFormData.providerName}
+                    onChange={(e) => setLpFormData({ ...lpFormData, providerName: e.target.value })}
+                    placeholder="e.g., Corecen LP"
+                    className="w-full bg-dark-700 border border-gray-700 rounded-lg px-3 py-2 text-white"
+                  />
                 </div>
-              ))}
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Provider Code *</label>
+                  <input
+                    type="text"
+                    value={lpFormData.providerCode}
+                    onChange={(e) => setLpFormData({ ...lpFormData, providerCode: e.target.value.toUpperCase() })}
+                    placeholder="e.g., CORECEN"
+                    className="w-full bg-dark-700 border border-gray-700 rounded-lg px-3 py-2 text-white"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-gray-400 text-sm mb-2">API Base URL *</label>
+                  <input
+                    type="text"
+                    value={lpFormData.apiBaseUrl}
+                    onChange={(e) => setLpFormData({ ...lpFormData, apiBaseUrl: e.target.value })}
+                    placeholder="e.g., https://api.corecen.com"
+                    className="w-full bg-dark-700 border border-gray-700 rounded-lg px-3 py-2 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">API Key *</label>
+                  <input
+                    type="password"
+                    value={lpFormData.apiKey}
+                    onChange={(e) => setLpFormData({ ...lpFormData, apiKey: e.target.value })}
+                    placeholder={editingProvider ? '••••••••' : 'Enter API Key'}
+                    className="w-full bg-dark-700 border border-gray-700 rounded-lg px-3 py-2 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Secret Key *</label>
+                  <input
+                    type="password"
+                    value={lpFormData.secretKey}
+                    onChange={(e) => setLpFormData({ ...lpFormData, secretKey: e.target.value })}
+                    placeholder={editingProvider ? '••••••••' : 'Enter Secret Key'}
+                    className="w-full bg-dark-700 border border-gray-700 rounded-lg px-3 py-2 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Account ID (Optional)</label>
+                  <input
+                    type="text"
+                    value={lpFormData.accountId}
+                    onChange={(e) => setLpFormData({ ...lpFormData, accountId: e.target.value })}
+                    placeholder="LP Account ID"
+                    className="w-full bg-dark-700 border border-gray-700 rounded-lg px-3 py-2 text-white"
+                  />
+                </div>
+                <div className="flex items-center gap-6">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={lpFormData.isActive}
+                      onChange={(e) => setLpFormData({ ...lpFormData, isActive: e.target.checked })}
+                      className="w-4 h-4 rounded border-gray-600 bg-dark-700 text-blue-500"
+                    />
+                    <span className="text-gray-400 text-sm">Active</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={lpFormData.isPrimary}
+                      onChange={(e) => setLpFormData({ ...lpFormData, isPrimary: e.target.checked })}
+                      className="w-4 h-4 rounded border-gray-600 bg-dark-700 text-blue-500"
+                    />
+                    <span className="text-gray-400 text-sm">Primary Provider</span>
+                  </label>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowLpForm(false)
+                    setEditingProvider(null)
+                  }}
+                  className="px-4 py-2 bg-dark-700 text-white rounded-lg hover:bg-dark-600"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveLpProvider}
+                  disabled={processing || !lpFormData.providerName || !lpFormData.providerCode || !lpFormData.apiBaseUrl || (!editingProvider && (!lpFormData.apiKey || !lpFormData.secretKey))}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {processing ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
+                  {editingProvider ? 'Update Provider' : 'Save Provider'}
+                </button>
+              </div>
             </div>
           )}
+
+          {/* LP Providers List */}
+          <div className="bg-dark-800 rounded-xl border border-gray-800 p-6">
+            {lpProviders.length === 0 ? (
+              <div className="text-center py-8">
+                <Link size={48} className="text-gray-600 mx-auto mb-4" />
+                <p className="text-gray-400 mb-2">No LP providers configured yet.</p>
+                <p className="text-gray-500 text-sm">Click "Add LP Provider" to connect your first liquidity provider.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {lpProviders.map((provider) => (
+                  <div key={provider._id} className="p-4 bg-dark-700 rounded-lg border border-gray-700">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-white font-medium">{provider.providerName}</h4>
+                        <p className="text-gray-500 text-sm">Code: {provider.providerCode}</p>
+                        <p className="text-gray-500 text-sm">API: {provider.apiBaseUrl}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleEditProvider(provider)}
+                          className="p-2 bg-gray-600/20 text-gray-400 rounded hover:bg-gray-600/30 hover:text-white transition-colors"
+                          title="Edit Provider"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        {provider.isPrimary && (
+                          <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">Primary</span>
+                        )}
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          provider.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                        }`}>
+                          {provider.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-3 grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-500">Total Orders</p>
+                        <p className="text-white">{provider.stats?.totalOrders || 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Successful</p>
+                        <p className="text-green-400">{provider.stats?.successfulOrders || 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Failed</p>
+                        <p className="text-red-400">{provider.stats?.failedOrders || 0}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
