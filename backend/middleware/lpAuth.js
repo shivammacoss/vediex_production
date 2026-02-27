@@ -48,7 +48,9 @@ export function lpAuthMiddleware(req, res, next) {
   }
 
   // Generate expected signature
+  // Corecen sends: METHOD + URL_PATH + TIMESTAMP + BODY
   const method = req.method.toUpperCase()
+  // Use the path portion only (e.g., /api/lp/prices/batch), not the full URL
   const path = req.originalUrl || req.url
   const body = req.body ? JSON.stringify(req.body) : ''
   const message = `${method}${path}${timestamp}${body}`
@@ -56,6 +58,17 @@ export function lpAuthMiddleware(req, res, next) {
     .createHmac('sha256', LP_API_SECRET)
     .update(message)
     .digest('hex')
+  
+  // Debug logging for signature mismatch
+  if (signature !== expectedSignature) {
+    console.log('[LP Auth] Signature mismatch debug:')
+    console.log('  Method:', method)
+    console.log('  Path:', path)
+    console.log('  Timestamp:', timestamp)
+    console.log('  Body length:', body.length)
+    console.log('  Expected sig:', expectedSignature.substring(0, 16) + '...')
+    console.log('  Received sig:', signature.substring(0, 16) + '...')
+  }
 
   // Validate signature
   if (signature !== expectedSignature) {
