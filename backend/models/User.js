@@ -130,6 +130,17 @@ const userSchema = new mongoose.Schema({
     default: false
   },
   
+  // A-Book / B-Book assignment
+  bookType: {
+    type: String,
+    enum: ['A', 'B', null],
+    default: null
+  },
+  bookChangedAt: {
+    type: Date,
+    default: null
+  },
+  
   createdAt: {
     type: Date,
     default: Date.now

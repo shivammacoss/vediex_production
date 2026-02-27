@@ -223,6 +223,7 @@ app.use('/api/banners', bannerRoutes)
 app.use('/api/employee', employeeRoutes)
 app.use('/api/employee-mgmt', employeeManagementRoutes)
 app.use('/api/admin/book', bookManagementRoutes)
+app.use('/api/book', bookManagementRoutes)
 app.use('/api/lp', lpRoutes)
 
 // Serve uploaded files statically

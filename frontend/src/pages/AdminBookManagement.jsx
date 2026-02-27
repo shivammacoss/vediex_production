@@ -1,1036 +1,725 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import AdminLayout from '../components/AdminLayout'
 import { 
-  BookOpen, 
-  ArrowRightLeft, 
-  RefreshCw, 
-  Search, 
-  Filter,
+  Users,
+  BookOpen,
+  Search,
+  RefreshCw,
+  Info,
+  CheckCircle,
+  Settings,
+  Key,
+  Link,
+  Wifi,
   Eye,
-  Send,
-  Building2,
-  TrendingUp,
-  TrendingDown,
-  AlertTriangle,
-  Check,
-  X,
-  Clock,
-  Activity,
-  BarChart3,
-  Shield,
-  Zap,
-  History,
-  Plus,
-  Edit,
+  EyeOff,
   Save,
-  Link
+  XCircle,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import { API_URL } from '../config/api'
 
 const AdminBookManagement = () => {
-  const [trades, setTrades] = useState([])
+  const [users, setUsers] = useState([])
+  const [stats, setStats] = useState({ aBookUsers: 0, bBookUsers: 0, totalUsers: 0 })
   const [loading, setLoading] = useState(true)
-  const [bookCounts, setBookCounts] = useState({ UNASSIGNED: 0, A_BOOK: 0, B_BOOK: 0, total: 0 })
-  const [selectedTrade, setSelectedTrade] = useState(null)
-  const [showDetailModal, setShowDetailModal] = useState(false)
-  const [showConfirmModal, setShowConfirmModal] = useState(false)
-  const [confirmAction, setConfirmAction] = useState(null)
-  const [processing, setProcessing] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-  const [lpProviders, setLpProviders] = useState([])
-  const [selectedProvider, setSelectedProvider] = useState('')
-  const [auditLogs, setAuditLogs] = useState([])
-  const [bookStats, setBookStats] = useState(null)
-  const [showLpForm, setShowLpForm] = useState(false)
-  const [editingProvider, setEditingProvider] = useState(null)
-  const [lpFormData, setLpFormData] = useState({
-    providerName: '',
-    providerCode: '',
-    apiBaseUrl: '',
-    apiKey: '',
-    secretKey: '',
-    accountId: '',
-    isActive: true,
-    isPrimary: false
-  })
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterBook, setFilterBook] = useState('all')
+  const [transferring, setTransferring] = useState(null)
+  const [selectedUsers, setSelectedUsers] = useState([])
+  const [bulkTransferring, setBulkTransferring] = useState(false)
   
-  // Filters
-  const [filterBookType, setFilterBookType] = useState('ALL')
-  const [searchSymbol, setSearchSymbol] = useState('')
-  const [activeTab, setActiveTab] = useState('trades') // trades, audit, settings
+  // LP Connection Settings
+  const [showLpSettings, setShowLpSettings] = useState(false)
+  const [lpSettings, setLpSettings] = useState({
+    lpApiKey: '',
+    lpApiSecret: '',
+    lpApiUrl: '',
+    corecenWsUrl: ''
+  })
+  const [showSecrets, setShowSecrets] = useState({ key: false, secret: false })
+  const [savingLpSettings, setSavingLpSettings] = useState(false)
+  const [testingConnection, setTestingConnection] = useState(false)
+  const [connectionStatus, setConnectionStatus] = useState(null) // 'success' | 'error' | null
+  const [connectionMessage, setConnectionMessage] = useState('')
+  const [lpConnected, setLpConnected] = useState(false)
+  const [checkingLpStatus, setCheckingLpStatus] = useState(true)
 
-  const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}')
+  useEffect(() => {
+    fetchUsers()
+    fetchLpSettings()
+    checkLpConnectionStatus()
+  }, [filterBook])
 
-  // Fetch running trades
-  const fetchTrades = useCallback(async () => {
+  // Check LP connection status on mount and periodically
+  const checkLpConnectionStatus = async () => {
+    setCheckingLpStatus(true)
     try {
-      setLoading(true)
+      const res = await fetch(`${API_URL}/book/lp-status`)
+      const data = await res.json()
+      setLpConnected(data.connected === true)
+    } catch (error) {
+      console.error('Error checking LP status:', error)
+      setLpConnected(false)
+    }
+    setCheckingLpStatus(false)
+  }
+
+  // Fetch LP settings on mount
+  const fetchLpSettings = async () => {
+    try {
+      const res = await fetch(`${API_URL}/book/lp-settings`)
+      const data = await res.json()
+      if (data.success && data.fullSettings) {
+        setLpSettings({
+          lpApiKey: data.fullSettings.lpApiKey || '',
+          lpApiSecret: data.fullSettings.lpApiSecret || '',
+          lpApiUrl: data.fullSettings.lpApiUrl || '',
+          corecenWsUrl: data.fullSettings.corecenWsUrl || ''
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching LP settings:', error)
+    }
+  }
+
+  // Save LP settings
+  const saveLpSettings = async () => {
+    setSavingLpSettings(true)
+    setConnectionStatus(null)
+    try {
+      const res = await fetch(`${API_URL}/book/lp-settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(lpSettings)
+      })
+      const data = await res.json()
+      if (data.success) {
+        setConnectionStatus('success')
+        setConnectionMessage('LP settings saved successfully!')
+        setTimeout(() => setConnectionStatus(null), 3000)
+      } else {
+        setConnectionStatus('error')
+        setConnectionMessage(data.message || 'Failed to save settings')
+      }
+    } catch (error) {
+      console.error('Error saving LP settings:', error)
+      setConnectionStatus('error')
+      setConnectionMessage('Error saving settings')
+    }
+    setSavingLpSettings(false)
+  }
+
+  // Test LP connection
+  const testLpConnection = async () => {
+    setTestingConnection(true)
+    setConnectionStatus(null)
+    try {
+      const res = await fetch(`${API_URL}/book/test-lp-connection`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(lpSettings)
+      })
+      const data = await res.json()
+      if (data.success) {
+        setConnectionStatus('success')
+        setConnectionMessage(data.message || 'Connection successful!')
+        setLpConnected(true)
+      } else {
+        setConnectionStatus('error')
+        setConnectionMessage(data.message || 'Connection failed')
+        setLpConnected(false)
+      }
+    } catch (error) {
+      console.error('Error testing LP connection:', error)
+      setConnectionStatus('error')
+      setConnectionMessage('Error testing connection')
+      setLpConnected(false)
+    }
+    setTestingConnection(false)
+  }
+
+  const fetchUsers = async () => {
+    setLoading(true)
+    try {
       const params = new URLSearchParams()
-      if (filterBookType !== 'ALL') params.append('bookType', filterBookType)
-      if (searchSymbol) params.append('symbol', searchSymbol)
-
-      const res = await fetch(`${API_URL}/admin/book/trades/running?${params}`, {
-        headers: { 'X-Admin-ID': adminUser._id }
-      })
-      const data = await res.json()
+      if (filterBook !== 'all') params.append('bookType', filterBook)
+      if (searchTerm) params.append('search', searchTerm)
       
-      if (data.success) {
-        setTrades(data.trades)
-        setBookCounts(data.bookCounts)
-      }
-    } catch (error) {
-      console.error('Fetch trades error:', error)
-      setError('Failed to fetch trades')
-    } finally {
-      setLoading(false)
-    }
-  }, [filterBookType, searchSymbol, adminUser._id])
-
-  // Fetch LP providers
-  const fetchLpProviders = async () => {
-    try {
-      const res = await fetch(`${API_URL}/admin/book/lp-providers`, {
-        headers: { 'X-Admin-ID': adminUser._id }
-      })
+      const res = await fetch(`${API_URL}/book/users?${params}`)
       const data = await res.json()
       if (data.success) {
-        setLpProviders(data.providers)
-        if (data.providers.length > 0) {
-          setSelectedProvider(data.providers[0].providerCode)
-        }
+        setUsers(data.users)
+        setStats(data.stats)
       }
     } catch (error) {
-      console.error('Fetch LP providers error:', error)
+      console.error('Error fetching users:', error)
     }
+    setLoading(false)
   }
 
-  // Fetch audit logs
-  const fetchAuditLogs = async () => {
+  const handleTransfer = async (userId, bookType) => {
+    setTransferring(userId)
     try {
-      const res = await fetch(`${API_URL}/admin/book/book-audit-logs?limit=100`, {
-        headers: { 'X-Admin-ID': adminUser._id }
+      const res = await fetch(`${API_URL}/book/users/${userId}/transfer`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookType })
       })
       const data = await res.json()
       if (data.success) {
-        setAuditLogs(data.logs)
-      }
-    } catch (error) {
-      console.error('Fetch audit logs error:', error)
-    }
-  }
-
-  // Fetch book stats
-  const fetchBookStats = async () => {
-    try {
-      const res = await fetch(`${API_URL}/admin/book/book-stats`, {
-        headers: { 'X-Admin-ID': adminUser._id }
-      })
-      const data = await res.json()
-      if (data.success) {
-        setBookStats(data)
-      }
-    } catch (error) {
-      console.error('Fetch book stats error:', error)
-    }
-  }
-
-  // Save LP Provider
-  const handleSaveLpProvider = async () => {
-    setProcessing(true)
-    setError('')
-
-    try {
-      const payload = {
-        ...lpFormData,
-        _id: editingProvider?._id
-      }
-
-      const res = await fetch(`${API_URL}/admin/book/lp-provider`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Admin-ID': adminUser._id
-        },
-        body: JSON.stringify(payload)
-      })
-      const data = await res.json()
-
-      if (data.success) {
-        setSuccess(editingProvider ? 'LP Provider updated!' : 'LP Provider created!')
-        setShowLpForm(false)
-        setEditingProvider(null)
-        setLpFormData({
-          providerName: '',
-          providerCode: '',
-          apiBaseUrl: '',
-          apiKey: '',
-          secretKey: '',
-          accountId: '',
-          isActive: true,
-          isPrimary: false
-        })
-        fetchLpProviders()
-        setTimeout(() => setSuccess(''), 3000)
+        fetchUsers()
       } else {
-        setError(data.message || 'Failed to save LP provider')
+        alert(data.message || 'Failed to transfer user')
       }
     } catch (error) {
-      setError('Error saving LP provider')
-    } finally {
-      setProcessing(false)
+      console.error('Error transferring user:', error)
+      alert('Error transferring user')
+    }
+    setTransferring(null)
+  }
+
+  const handleSearch = (e) => {
+    e.preventDefault()
+    fetchUsers()
+  }
+
+  const handleSelectUser = (userId) => {
+    setSelectedUsers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    )
+  }
+
+  const handleSelectAll = () => {
+    if (selectedUsers.length === filteredUsers.length) {
+      setSelectedUsers([])
+    } else {
+      setSelectedUsers(filteredUsers.map(u => u._id))
     }
   }
 
-  // Edit LP Provider
-  const handleEditProvider = (provider) => {
-    setEditingProvider(provider)
-    setLpFormData({
-      providerName: provider.providerName,
-      providerCode: provider.providerCode,
-      apiBaseUrl: provider.apiBaseUrl,
-      apiKey: '',
-      secretKey: '',
-      accountId: '',
-      isActive: provider.isActive,
-      isPrimary: provider.isPrimary
-    })
-    setShowLpForm(true)
-  }
-
-  useEffect(() => {
-    fetchTrades()
-    fetchLpProviders()
-    fetchBookStats()
+  const handleBulkTransfer = async (bookType) => {
+    if (selectedUsers.length === 0) {
+      alert('Please select users to transfer')
+      return
+    }
     
-    // Auto-refresh every 5 seconds
-    const interval = setInterval(fetchTrades, 5000)
-    return () => clearInterval(interval)
-  }, [fetchTrades])
-
-  useEffect(() => {
-    if (activeTab === 'audit') {
-      fetchAuditLogs()
-    }
-  }, [activeTab])
-
-  // Send to A-Book
-  const handleSendToABook = async () => {
-    if (!selectedTrade) return
-    setProcessing(true)
-    setError('')
-
+    setBulkTransferring(true)
     try {
-      const res = await fetch(`${API_URL}/admin/book/trade/send-to-a-book`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Admin-ID': adminUser._id
-        },
-        body: JSON.stringify({
-          tradeId: selectedTrade._id,
-          lpProvider: selectedProvider
-        })
+      const res = await fetch(`${API_URL}/book/users/bulk-transfer`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userIds: selectedUsers, bookType })
       })
       const data = await res.json()
-
       if (data.success) {
-        setSuccess('Trade sent to A-Book successfully!')
-        setShowConfirmModal(false)
-        fetchTrades()
-        fetchBookStats()
-        setTimeout(() => setSuccess(''), 3000)
+        setSelectedUsers([])
+        fetchUsers()
       } else {
-        setError(data.message || 'Failed to send to A-Book')
+        alert(data.message || 'Failed to transfer users')
       }
     } catch (error) {
-      setError('Error sending to A-Book')
-    } finally {
-      setProcessing(false)
+      console.error('Error bulk transferring users:', error)
+      alert('Error transferring users')
     }
+    setBulkTransferring(false)
   }
 
-  // Move to B-Book
-  const handleMoveToBBook = async () => {
-    if (!selectedTrade) return
-    setProcessing(true)
-    setError('')
+  const filteredUsers = users.filter(user => {
+    if (!searchTerm) return true
+    return user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  })
 
-    try {
-      const res = await fetch(`${API_URL}/admin/book/trade/move-to-b-book`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Admin-ID': adminUser._id
-        },
-        body: JSON.stringify({
-          tradeId: selectedTrade._id
-        })
-      })
-      const data = await res.json()
-
-      if (data.success) {
-        setSuccess('Trade moved to B-Book successfully!')
-        setShowConfirmModal(false)
-        fetchTrades()
-        fetchBookStats()
-        setTimeout(() => setSuccess(''), 3000)
-      } else {
-        setError(data.message || 'Failed to move to B-Book')
-      }
-    } catch (error) {
-      setError('Error moving to B-Book')
-    } finally {
-      setProcessing(false)
-    }
+  const getStatusColor = (user) => {
+    if (user.isBanned) return 'bg-red-500/20 text-red-500'
+    if (user.isBlocked) return 'bg-yellow-500/20 text-yellow-500'
+    return 'bg-green-500/20 text-green-500'
   }
 
-  // Open confirm modal
-  const openConfirmModal = (trade, action) => {
-    setSelectedTrade(trade)
-    setConfirmAction(action)
-    setShowConfirmModal(true)
-    setError('')
-  }
-
-  // View trade details
-  const viewTradeDetails = async (trade) => {
-    try {
-      const res = await fetch(`${API_URL}/admin/book/trade/${trade._id}`, {
-        headers: { 'X-Admin-ID': adminUser._id }
-      })
-      const data = await res.json()
-      if (data.success) {
-        setSelectedTrade({ ...data.trade, lpTrade: data.lpTrade, auditLogs: data.auditLogs })
-        setShowDetailModal(true)
-      }
-    } catch (error) {
-      console.error('Fetch trade details error:', error)
-    }
-  }
-
-  // Get book type badge
-  const getBookTypeBadge = (bookType) => {
-    switch (bookType) {
-      case 'A_BOOK':
-        return <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs font-medium flex items-center gap-1"><Zap size={12} /> A-Book</span>
-      case 'B_BOOK':
-        return <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded-full text-xs font-medium flex items-center gap-1"><Building2 size={12} /> B-Book</span>
-      default:
-        return <span className="px-2 py-1 bg-gray-500/20 text-gray-400 rounded-full text-xs font-medium flex items-center gap-1"><Clock size={12} /> Unassigned</span>
-    }
-  }
-
-  // Get LP status badge
-  const getLpStatusBadge = (status) => {
-    switch (status) {
-      case 'HEDGED':
-        return <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-xs">Hedged</span>
-      case 'PENDING':
-        return <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-xs">Pending</span>
-      case 'FAILED':
-        return <span className="px-2 py-0.5 bg-red-500/20 text-red-400 rounded text-xs">Failed</span>
-      case 'CLOSED':
-        return <span className="px-2 py-0.5 bg-gray-500/20 text-gray-400 rounded text-xs">Closed</span>
-      default:
-        return null
-    }
+  const getStatusText = (user) => {
+    if (user.isBanned) return 'Banned'
+    if (user.isBlocked) return 'Blocked'
+    return 'Active'
   }
 
   return (
-    <AdminLayout title="Book Management" subtitle="A-Book / B-Book Trade Routing">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-dark-800 rounded-xl p-4 border border-gray-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gray-500/20 rounded-lg flex items-center justify-center">
-              <Clock size={20} className="text-gray-400" />
-            </div>
-            <div>
-              <p className="text-gray-500 text-xs">Unassigned</p>
-              <p className="text-white text-xl font-bold">{bookCounts.UNASSIGNED}</p>
-            </div>
+    <AdminLayout title="Book Management" subtitle="Manage A Book and B Book users">
+      {/* LP Connection Status Banner */}
+      <div className={`mb-4 p-4 rounded-xl flex items-center justify-between ${
+        checkingLpStatus 
+          ? 'bg-yellow-500/10 border border-yellow-500/30' 
+          : lpConnected 
+            ? 'bg-green-500/10 border border-green-500/30' 
+            : 'bg-red-500/10 border border-red-500/30'
+      }`}>
+        <div className="flex items-center gap-3">
+          {checkingLpStatus ? (
+            <RefreshCw size={20} className="text-yellow-500 animate-spin" />
+          ) : lpConnected ? (
+            <CheckCircle size={20} className="text-green-500" />
+          ) : (
+            <XCircle size={20} className="text-red-500" />
+          )}
+          <div>
+            <p className={`font-medium ${checkingLpStatus ? 'text-yellow-400' : lpConnected ? 'text-green-400' : 'text-red-400'}`}>
+              {checkingLpStatus ? 'Checking LP Connection...' : lpConnected ? 'LP Connected' : 'LP Not Connected'}
+            </p>
+            <p className="text-gray-500 text-sm">
+              {checkingLpStatus 
+                ? 'Verifying connection to Liquidity Provider' 
+                : lpConnected 
+                  ? 'A-Book trades will be routed to LP automatically' 
+                  : 'Configure LP settings below to enable A-Book routing'}
+            </p>
           </div>
         </div>
-        <div className="bg-dark-800 rounded-xl p-4 border border-gray-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-              <Zap size={20} className="text-blue-400" />
-            </div>
-            <div>
-              <p className="text-gray-500 text-xs">A-Book (LP)</p>
-              <p className="text-blue-400 text-xl font-bold">{bookCounts.A_BOOK}</p>
-            </div>
-          </div>
+        <button
+          onClick={checkLpConnectionStatus}
+          disabled={checkingLpStatus}
+          className="flex items-center gap-2 px-3 py-1.5 bg-dark-700 hover:bg-dark-600 text-gray-300 rounded-lg text-sm transition-colors disabled:opacity-50"
+        >
+          <RefreshCw size={14} className={checkingLpStatus ? 'animate-spin' : ''} />
+          Check Status
+        </button>
+      </div>
+
+      {/* Warning if LP not connected */}
+      {!checkingLpStatus && !lpConnected && (
+        <div className="mb-4 p-3 rounded-lg bg-orange-500/10 border border-orange-500/30 flex items-center gap-3">
+          <Info size={18} className="text-orange-500 flex-shrink-0" />
+          <p className="text-orange-400 text-sm">
+            <strong>Warning:</strong> Users cannot be moved to A-Book while LP is disconnected. Please configure and test the LP connection first.
+          </p>
         </div>
-        <div className="bg-dark-800 rounded-xl p-4 border border-gray-800">
-          <div className="flex items-center gap-3">
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex justify-between items-center mb-4">
+        <button
+          onClick={() => setShowLpSettings(!showLpSettings)}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+            lpConnected 
+              ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border border-purple-500/30' 
+              : 'bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 border border-orange-500/30'
+          }`}
+        >
+          <Settings size={16} />
+          LP Connection Settings
+          {showLpSettings ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+        <button
+          onClick={fetchUsers}
+          className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
+        >
+          <RefreshCw size={16} />
+          Refresh
+        </button>
+      </div>
+
+      {/* LP Connection Settings Panel */}
+      {showLpSettings && (
+        <div className="bg-dark-800 rounded-xl p-6 border border-purple-500/30 mb-6">
+          <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-              <Building2 size={20} className="text-purple-400" />
+              <Wifi size={20} className="text-purple-500" />
             </div>
             <div>
-              <p className="text-gray-500 text-xs">B-Book (Internal)</p>
-              <p className="text-purple-400 text-xl font-bold">{bookCounts.B_BOOK}</p>
+              <h3 className="text-white font-semibold">Liquidity Provider Connection</h3>
+              <p className="text-gray-500 text-sm">Configure connection to Corcen LP for A-Book trade routing</p>
             </div>
           </div>
-        </div>
-        <div className="bg-dark-800 rounded-xl p-4 border border-gray-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
-              <Activity size={20} className="text-green-400" />
-            </div>
-            <div>
-              <p className="text-gray-500 text-xs">Total Open</p>
-              <p className="text-green-400 text-xl font-bold">{bookCounts.total}</p>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Success/Error Messages */}
-      {success && (
-        <div className="mb-4 p-3 bg-green-500/20 border border-green-500/50 rounded-lg text-green-400 flex items-center gap-2">
-          <Check size={18} /> {success}
-        </div>
-      )}
-      {error && (
-        <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 flex items-center gap-2">
-          <AlertTriangle size={18} /> {error}
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6">
-        <button
-          onClick={() => setActiveTab('trades')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-            activeTab === 'trades' ? 'bg-blue-500 text-white' : 'bg-dark-700 text-gray-400 hover:text-white'
-          }`}
-        >
-          <BarChart3 size={16} /> Running Trades
-        </button>
-        <button
-          onClick={() => setActiveTab('audit')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-            activeTab === 'audit' ? 'bg-blue-500 text-white' : 'bg-dark-700 text-gray-400 hover:text-white'
-          }`}
-        >
-          <History size={16} /> Audit Logs
-        </button>
-        <button
-          onClick={() => setActiveTab('settings')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-            activeTab === 'settings' ? 'bg-blue-500 text-white' : 'bg-dark-700 text-gray-400 hover:text-white'
-          }`}
-        >
-          <Shield size={16} /> LP Settings
-        </button>
-      </div>
-
-      {/* Running Trades Tab */}
-      {activeTab === 'trades' && (
-        <div className="bg-dark-800 rounded-xl border border-gray-800 overflow-hidden">
-          {/* Filters */}
-          <div className="p-4 border-b border-gray-800 flex flex-wrap gap-4 items-center">
-            <div className="flex items-center gap-2">
-              <Filter size={16} className="text-gray-500" />
-              <select
-                value={filterBookType}
-                onChange={(e) => setFilterBookType(e.target.value)}
-                className="bg-dark-700 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"
-              >
-                <option value="ALL">All Books</option>
-                <option value="UNASSIGNED">Unassigned</option>
-                <option value="A_BOOK">A-Book</option>
-                <option value="B_BOOK">B-Book</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-2 flex-1 max-w-xs">
-              <Search size={16} className="text-gray-500" />
-              <input
-                type="text"
-                value={searchSymbol}
-                onChange={(e) => setSearchSymbol(e.target.value)}
-                placeholder="Search symbol..."
-                className="bg-dark-700 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm w-full"
-              />
-            </div>
-            <button
-              onClick={fetchTrades}
-              className="p-2 bg-dark-700 hover:bg-dark-600 rounded-lg text-gray-400 hover:text-white transition-colors"
-            >
-              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            </button>
-          </div>
-
-          {/* Trades Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-dark-700">
-                <tr>
-                  <th className="text-left text-gray-400 text-xs font-medium px-4 py-3">User</th>
-                  <th className="text-left text-gray-400 text-xs font-medium px-4 py-3">Symbol</th>
-                  <th className="text-left text-gray-400 text-xs font-medium px-4 py-3">Side</th>
-                  <th className="text-right text-gray-400 text-xs font-medium px-4 py-3">Lot</th>
-                  <th className="text-right text-gray-400 text-xs font-medium px-4 py-3">Entry</th>
-                  <th className="text-right text-gray-400 text-xs font-medium px-4 py-3">Current</th>
-                  <th className="text-right text-gray-400 text-xs font-medium px-4 py-3">P/L</th>
-                  <th className="text-center text-gray-400 text-xs font-medium px-4 py-3">Book</th>
-                  <th className="text-center text-gray-400 text-xs font-medium px-4 py-3">LP Status</th>
-                  <th className="text-center text-gray-400 text-xs font-medium px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading && trades.length === 0 ? (
-                  <tr>
-                    <td colSpan="10" className="text-center py-8 text-gray-500">
-                      <RefreshCw size={24} className="animate-spin mx-auto mb-2" />
-                      Loading trades...
-                    </td>
-                  </tr>
-                ) : trades.length === 0 ? (
-                  <tr>
-                    <td colSpan="10" className="text-center py-8 text-gray-500">
-                      No open trades found
-                    </td>
-                  </tr>
-                ) : (
-                  trades.map((trade) => {
-                    const pnl = trade.floatingPnl || 0
-                    return (
-                      <tr key={trade._id} className="border-t border-gray-800 hover:bg-dark-700/50">
-                        <td className="px-4 py-3">
-                          <div>
-                            <p className="text-white text-sm">{trade.userId?.name || 'N/A'}</p>
-                            <p className="text-gray-500 text-xs">{trade.userId?.email || ''}</p>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="text-white font-medium">{trade.symbol}</span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            trade.side === 'BUY' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                          }`}>
-                            {trade.side}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right text-white">{trade.quantity}</td>
-                        <td className="px-4 py-3 text-right text-gray-400">{trade.openPrice?.toFixed(5)}</td>
-                        <td className="px-4 py-3 text-right text-gray-400">{trade.currentPrice?.toFixed(5) || '-'}</td>
-                        <td className={`px-4 py-3 text-right font-medium ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {getBookTypeBadge(trade.bookType)}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {getLpStatusBadge(trade.lpStatus)}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              onClick={() => viewTradeDetails(trade)}
-                              className="p-1.5 bg-gray-500/20 text-gray-400 rounded hover:bg-gray-500/30 hover:text-white transition-colors"
-                              title="View Details"
-                            >
-                              <Eye size={14} />
-                            </button>
-                            {trade.bookType !== 'A_BOOK' && (
-                              <button
-                                onClick={() => openConfirmModal(trade, 'A_BOOK')}
-                                className="p-1.5 bg-blue-500/20 text-blue-400 rounded hover:bg-blue-500/30 transition-colors"
-                                title="Send to A-Book"
-                              >
-                                <Zap size={14} />
-                              </button>
-                            )}
-                            {trade.bookType !== 'B_BOOK' && (
-                              <button
-                                onClick={() => openConfirmModal(trade, 'B_BOOK')}
-                                className="p-1.5 bg-purple-500/20 text-purple-400 rounded hover:bg-purple-500/30 transition-colors"
-                                title="Move to B-Book"
-                              >
-                                <Building2 size={14} />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Audit Logs Tab */}
-      {activeTab === 'audit' && (
-        <div className="bg-dark-800 rounded-xl border border-gray-800 overflow-hidden">
-          <div className="p-4 border-b border-gray-800">
-            <h3 className="text-white font-semibold">Book Assignment Audit Trail</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-dark-700">
-                <tr>
-                  <th className="text-left text-gray-400 text-xs font-medium px-4 py-3">Time</th>
-                  <th className="text-left text-gray-400 text-xs font-medium px-4 py-3">Trade</th>
-                  <th className="text-left text-gray-400 text-xs font-medium px-4 py-3">User</th>
-                  <th className="text-left text-gray-400 text-xs font-medium px-4 py-3">Action</th>
-                  <th className="text-left text-gray-400 text-xs font-medium px-4 py-3">From → To</th>
-                  <th className="text-left text-gray-400 text-xs font-medium px-4 py-3">Performed By</th>
-                  <th className="text-center text-gray-400 text-xs font-medium px-4 py-3">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {auditLogs.map((log) => (
-                  <tr key={log._id} className="border-t border-gray-800">
-                    <td className="px-4 py-3 text-gray-400 text-sm">
-                      {new Date(log.createdAt).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-white font-mono text-sm">{log.tradeRef}</span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-400 text-sm">
-                      {log.userId?.email || 'N/A'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        log.action.includes('A_BOOK') ? 'bg-blue-500/20 text-blue-400' :
-                        log.action.includes('B_BOOK') ? 'bg-purple-500/20 text-purple-400' :
-                        log.action.includes('FAILED') ? 'bg-red-500/20 text-red-400' :
-                        'bg-gray-500/20 text-gray-400'
-                      }`}>
-                        {log.action.replace(/_/g, ' ')}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-400 text-sm">
-                      {log.previousBookType} → {log.newBookType}
-                    </td>
-                    <td className="px-4 py-3 text-gray-400 text-sm">
-                      {log.performedBy?.email || log.performedByEmail}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {log.success ? (
-                        <Check size={16} className="text-green-400 mx-auto" />
-                      ) : (
-                        <X size={16} className="text-red-400 mx-auto" />
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* LP Settings Tab */}
-      {activeTab === 'settings' && (
-        <div className="space-y-6">
-          {/* Add LP Provider Button */}
-          <div className="flex justify-between items-center">
-            <h3 className="text-white font-semibold flex items-center gap-2">
-              <Shield size={20} /> Liquidity Provider Configuration
-            </h3>
-            <button
-              onClick={() => {
-                setEditingProvider(null)
-                setLpFormData({
-                  providerName: '',
-                  providerCode: '',
-                  apiBaseUrl: '',
-                  apiKey: '',
-                  secretKey: '',
-                  accountId: '',
-                  isActive: true,
-                  isPrimary: false
-                })
-                setShowLpForm(true)
-              }}
-              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium flex items-center gap-2"
-            >
-              <Plus size={16} /> Add LP Provider
-            </button>
-          </div>
-
-          {/* LP Form */}
-          {showLpForm && (
-            <div className="bg-dark-800 rounded-xl border border-gray-800 p-6">
-              <h4 className="text-white font-semibold mb-4 flex items-center gap-2">
-                <Link size={18} /> {editingProvider ? 'Edit LP Provider' : 'Connect New LP Provider'}
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Provider Name *</label>
-                  <input
-                    type="text"
-                    value={lpFormData.providerName}
-                    onChange={(e) => setLpFormData({ ...lpFormData, providerName: e.target.value })}
-                    placeholder="e.g., Corecen LP"
-                    className="w-full bg-dark-700 border border-gray-700 rounded-lg px-3 py-2 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Provider Code *</label>
-                  <input
-                    type="text"
-                    value={lpFormData.providerCode}
-                    onChange={(e) => setLpFormData({ ...lpFormData, providerCode: e.target.value.toUpperCase() })}
-                    placeholder="e.g., CORECEN"
-                    className="w-full bg-dark-700 border border-gray-700 rounded-lg px-3 py-2 text-white"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-gray-400 text-sm mb-2">API Base URL *</label>
-                  <input
-                    type="text"
-                    value={lpFormData.apiBaseUrl}
-                    onChange={(e) => setLpFormData({ ...lpFormData, apiBaseUrl: e.target.value })}
-                    placeholder="e.g., https://api.corecen.com"
-                    className="w-full bg-dark-700 border border-gray-700 rounded-lg px-3 py-2 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">API Key *</label>
-                  <input
-                    type="password"
-                    value={lpFormData.apiKey}
-                    onChange={(e) => setLpFormData({ ...lpFormData, apiKey: e.target.value })}
-                    placeholder={editingProvider ? '••••••••' : 'Enter API Key'}
-                    className="w-full bg-dark-700 border border-gray-700 rounded-lg px-3 py-2 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Secret Key *</label>
-                  <input
-                    type="password"
-                    value={lpFormData.secretKey}
-                    onChange={(e) => setLpFormData({ ...lpFormData, secretKey: e.target.value })}
-                    placeholder={editingProvider ? '••••••••' : 'Enter Secret Key'}
-                    className="w-full bg-dark-700 border border-gray-700 rounded-lg px-3 py-2 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Account ID (Optional)</label>
-                  <input
-                    type="text"
-                    value={lpFormData.accountId}
-                    onChange={(e) => setLpFormData({ ...lpFormData, accountId: e.target.value })}
-                    placeholder="LP Account ID"
-                    className="w-full bg-dark-700 border border-gray-700 rounded-lg px-3 py-2 text-white"
-                  />
-                </div>
-                <div className="flex items-center gap-6">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={lpFormData.isActive}
-                      onChange={(e) => setLpFormData({ ...lpFormData, isActive: e.target.checked })}
-                      className="w-4 h-4 rounded border-gray-600 bg-dark-700 text-blue-500"
-                    />
-                    <span className="text-gray-400 text-sm">Active</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={lpFormData.isPrimary}
-                      onChange={(e) => setLpFormData({ ...lpFormData, isPrimary: e.target.checked })}
-                      className="w-4 h-4 rounded border-gray-600 bg-dark-700 text-blue-500"
-                    />
-                    <span className="text-gray-400 text-sm">Primary Provider</span>
-                  </label>
-                </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => {
-                    setShowLpForm(false)
-                    setEditingProvider(null)
-                  }}
-                  className="px-4 py-2 bg-dark-700 text-white rounded-lg hover:bg-dark-600"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveLpProvider}
-                  disabled={processing || !lpFormData.providerName || !lpFormData.providerCode || !lpFormData.apiBaseUrl || (!editingProvider && (!lpFormData.apiKey || !lpFormData.secretKey))}
-                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {processing ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
-                  {editingProvider ? 'Update Provider' : 'Save Provider'}
-                </button>
-              </div>
+          {/* Connection Status Message */}
+          {connectionStatus && (
+            <div className={`mb-4 p-3 rounded-lg flex items-center gap-2 ${
+              connectionStatus === 'success' 
+                ? 'bg-green-500/20 border border-green-500/30 text-green-400' 
+                : 'bg-red-500/20 border border-red-500/30 text-red-400'
+            }`}>
+              {connectionStatus === 'success' ? <CheckCircle size={18} /> : <XCircle size={18} />}
+              <span>{connectionMessage}</span>
             </div>
           )}
 
-          {/* LP Providers List */}
-          <div className="bg-dark-800 rounded-xl border border-gray-800 p-6">
-            {lpProviders.length === 0 ? (
-              <div className="text-center py-8">
-                <Link size={48} className="text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-400 mb-2">No LP providers configured yet.</p>
-                <p className="text-gray-500 text-sm">Click "Add LP Provider" to connect your first liquidity provider.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {lpProviders.map((provider) => (
-                  <div key={provider._id} className="p-4 bg-dark-700 rounded-lg border border-gray-700">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="text-white font-medium">{provider.providerName}</h4>
-                        <p className="text-gray-500 text-sm">Code: {provider.providerCode}</p>
-                        <p className="text-gray-500 text-sm">API: {provider.apiBaseUrl}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleEditProvider(provider)}
-                          className="p-2 bg-gray-600/20 text-gray-400 rounded hover:bg-gray-600/30 hover:text-white transition-colors"
-                          title="Edit Provider"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        {provider.isPrimary && (
-                          <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs">Primary</span>
-                        )}
-                        <span className={`px-2 py-1 rounded text-xs ${
-                          provider.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                        }`}>
-                          {provider.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mt-3 grid grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <p className="text-gray-500">Total Orders</p>
-                        <p className="text-white">{provider.stats?.totalOrders || 0}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">Successful</p>
-                        <p className="text-green-400">{provider.stats?.successfulOrders || 0}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">Failed</p>
-                        <p className="text-red-400">{provider.stats?.failedOrders || 0}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Confirm Modal */}
-      {showConfirmModal && selectedTrade && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-dark-800 rounded-xl w-full max-w-md border border-gray-700">
-            <div className="p-6 border-b border-gray-700">
-              <h3 className="text-white font-semibold text-lg flex items-center gap-2">
-                {confirmAction === 'A_BOOK' ? (
-                  <><Zap size={20} className="text-blue-400" /> Send to A-Book</>
-                ) : (
-                  <><Building2 size={20} className="text-purple-400" /> Move to B-Book</>
-                )}
-              </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            {/* LP API URL */}
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                <Link size={14} className="inline mr-2" />
+                LP API URL
+              </label>
+              <input
+                type="text"
+                value={lpSettings.lpApiUrl}
+                onChange={(e) => setLpSettings({ ...lpSettings, lpApiUrl: e.target.value })}
+                placeholder="http://localhost:3001"
+                className="w-full bg-dark-700 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+              />
             </div>
-            <div className="p-6">
-              <div className="bg-dark-700 rounded-lg p-4 mb-4">
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <p className="text-gray-500">Symbol</p>
-                    <p className="text-white font-medium">{selectedTrade.symbol}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Side</p>
-                    <p className={selectedTrade.side === 'BUY' ? 'text-green-400' : 'text-red-400'}>
-                      {selectedTrade.side}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Lot Size</p>
-                    <p className="text-white">{selectedTrade.quantity}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Entry Price</p>
-                    <p className="text-white">{selectedTrade.openPrice?.toFixed(5)}</p>
-                  </div>
-                </div>
+
+            {/* WebSocket URL */}
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                <Wifi size={14} className="inline mr-2" />
+                WebSocket URL
+              </label>
+              <input
+                type="text"
+                value={lpSettings.corecenWsUrl}
+                onChange={(e) => setLpSettings({ ...lpSettings, corecenWsUrl: e.target.value })}
+                placeholder="http://localhost:3001"
+                className="w-full bg-dark-700 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+              />
+            </div>
+
+            {/* LP API Key */}
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                <Key size={14} className="inline mr-2" />
+                LP API Key
+              </label>
+              <div className="relative">
+                <input
+                  type={showSecrets.key ? 'text' : 'password'}
+                  value={lpSettings.lpApiKey}
+                  onChange={(e) => setLpSettings({ ...lpSettings, lpApiKey: e.target.value })}
+                  placeholder="lpk_xxxxxxxxxxxxxxxx"
+                  className="w-full bg-dark-700 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 font-mono text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowSecrets({ ...showSecrets, key: !showSecrets.key })}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                >
+                  {showSecrets.key ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
+            </div>
 
-              {confirmAction === 'A_BOOK' && (
-                <div className="mb-4">
-                  <label className="block text-gray-400 text-sm mb-2">Select LP Provider</label>
-                  <select
-                    value={selectedProvider}
-                    onChange={(e) => setSelectedProvider(e.target.value)}
-                    className="w-full bg-dark-700 border border-gray-700 rounded-lg px-3 py-2 text-white"
-                  >
-                    {lpProviders.map((p) => (
-                      <option key={p.providerCode} value={p.providerCode}>
-                        {p.providerName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+            {/* LP API Secret */}
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                <Key size={14} className="inline mr-2" />
+                LP API Secret
+              </label>
+              <div className="relative">
+                <input
+                  type={showSecrets.secret ? 'text' : 'password'}
+                  value={lpSettings.lpApiSecret}
+                  onChange={(e) => setLpSettings({ ...lpSettings, lpApiSecret: e.target.value })}
+                  placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                  className="w-full bg-dark-700 border border-gray-700 rounded-lg px-4 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 font-mono text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowSecrets({ ...showSecrets, secret: !showSecrets.secret })}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                >
+                  {showSecrets.secret ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+          </div>
 
-              {confirmAction === 'A_BOOK' ? (
-                <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg mb-4">
-                  <p className="text-blue-400 text-sm">
-                    This will place a hedge trade on the LP with identical parameters. 
-                    The trade will be marked as A-Book.
-                  </p>
-                </div>
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={testLpConnection}
+              disabled={testingConnection || !lpSettings.lpApiUrl}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {testingConnection ? (
+                <RefreshCw size={16} className="animate-spin" />
               ) : (
-                <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg mb-4">
-                  <p className="text-purple-400 text-sm">
-                    This trade will be handled internally. No LP hedge will be placed.
-                    Platform will manage P/L exposure.
-                  </p>
-                </div>
+                <Wifi size={16} />
               )}
-
-              {error && (
-                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg mb-4">
-                  <p className="text-red-400 text-sm">{error}</p>
-                </div>
+              Test Connection
+            </button>
+            <button
+              onClick={saveLpSettings}
+              disabled={savingLpSettings}
+              className="flex items-center gap-2 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {savingLpSettings ? (
+                <RefreshCw size={16} className="animate-spin" />
+              ) : (
+                <Save size={16} />
               )}
+              Save Settings
+            </button>
+          </div>
 
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowConfirmModal(false)}
-                  className="flex-1 py-2 bg-dark-700 text-white rounded-lg hover:bg-dark-600"
-                  disabled={processing}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmAction === 'A_BOOK' ? handleSendToABook : handleMoveToBBook}
-                  disabled={processing}
-                  className={`flex-1 py-2 rounded-lg font-medium flex items-center justify-center gap-2 ${
-                    confirmAction === 'A_BOOK' 
-                      ? 'bg-blue-500 hover:bg-blue-600 text-white' 
-                      : 'bg-purple-500 hover:bg-purple-600 text-white'
-                  }`}
-                >
-                  {processing ? (
-                    <><RefreshCw size={16} className="animate-spin" /> Processing...</>
-                  ) : (
-                    <>Confirm</>
-                  )}
-                </button>
-              </div>
-            </div>
+          {/* Help Text */}
+          <div className="mt-4 p-3 bg-dark-700 rounded-lg">
+            <p className="text-gray-500 text-xs">
+              <strong className="text-gray-400">Note:</strong> These settings configure the connection to your Corcen Liquidity Provider. 
+              A-Book trades will be automatically routed to the LP using these credentials. 
+              Make sure to test the connection before saving.
+            </p>
           </div>
         </div>
       )}
 
-      {/* Trade Detail Modal */}
-      {showDetailModal && selectedTrade && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-dark-800 rounded-xl w-full max-w-2xl border border-gray-700 max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-700 flex items-center justify-between">
-              <h3 className="text-white font-semibold text-lg">Trade Details</h3>
-              <button onClick={() => setShowDetailModal(false)} className="text-gray-400 hover:text-white">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              {/* Trade Info */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div>
-                  <p className="text-gray-500 text-sm">Trade ID</p>
-                  <p className="text-white font-mono">{selectedTrade.tradeId}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500 text-sm">Symbol</p>
-                  <p className="text-white font-medium">{selectedTrade.symbol}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500 text-sm">Side</p>
-                  <p className={selectedTrade.side === 'BUY' ? 'text-green-400' : 'text-red-400'}>
-                    {selectedTrade.side}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-gray-500 text-sm">Lot Size</p>
-                  <p className="text-white">{selectedTrade.quantity}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500 text-sm">Entry Price</p>
-                  <p className="text-white">{selectedTrade.openPrice?.toFixed(5)}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500 text-sm">Book Type</p>
-                  {getBookTypeBadge(selectedTrade.bookType)}
-                </div>
-              </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="bg-dark-800 rounded-xl p-5 border border-gray-800 flex items-center gap-4">
+          <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
+            <BookOpen size={24} className="text-green-500" />
+          </div>
+          <div>
+            <p className="text-gray-500 text-sm">A Book Users</p>
+            <p className="text-white text-2xl font-bold">{stats.aBookUsers}</p>
+          </div>
+        </div>
+        <div className="bg-dark-800 rounded-xl p-5 border border-gray-800 flex items-center gap-4">
+          <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+            <BookOpen size={24} className="text-blue-500" />
+          </div>
+          <div>
+            <p className="text-gray-500 text-sm">B Book Users</p>
+            <p className="text-white text-2xl font-bold">{stats.bBookUsers}</p>
+          </div>
+        </div>
+        <div className="bg-dark-800 rounded-xl p-5 border border-gray-800 flex items-center gap-4">
+          <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+            <Users size={24} className="text-purple-500" />
+          </div>
+          <div>
+            <p className="text-gray-500 text-sm">Total Users</p>
+            <p className="text-white text-2xl font-bold">{stats.totalUsers}</p>
+          </div>
+        </div>
+      </div>
 
-              {/* LP Trade Info */}
-              {selectedTrade.lpTrade && (
-                <div className="bg-dark-700 rounded-lg p-4">
-                  <h4 className="text-white font-medium mb-3 flex items-center gap-2">
-                    <Zap size={16} className="text-blue-400" /> LP Hedge Details
-                  </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                    <div>
-                      <p className="text-gray-500">LP Provider</p>
-                      <p className="text-white">{selectedTrade.lpTrade.lpProvider}</p>
+      {/* Info Box */}
+      <div className="bg-dark-800 rounded-xl p-4 border border-gray-800 mb-6">
+        <div className="flex items-start gap-3">
+          <Info size={20} className="text-yellow-500 mt-0.5 flex-shrink-0" />
+          <div>
+            <h3 className="text-yellow-500 font-semibold mb-2">A Book vs B Book</h3>
+            <ul className="text-gray-400 text-sm space-y-1">
+              <li>• <strong className="text-white">A Book:</strong> Trades go to liquidity provider. Admin cannot modify trades. Only charges are deducted.</li>
+              <li>• <strong className="text-white">B Book:</strong> Trades are managed internally. Admin has full control over trades, P&L, and modifications.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Search and Filter */}
+      <div className="bg-dark-800 rounded-xl border border-gray-800 overflow-hidden">
+        <div className="p-4 border-b border-gray-800 flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
+          <form onSubmit={handleSearch} className="flex-1">
+            <div className="relative">
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input
+                type="text"
+                placeholder="Search by email or name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-dark-700 border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-gray-600"
+              />
+            </div>
+          </form>
+          <select
+            value={filterBook}
+            onChange={(e) => setFilterBook(e.target.value)}
+            className="bg-dark-700 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-gray-600"
+          >
+            <option value="all">All Books</option>
+            <option value="A">A Book</option>
+            <option value="B">B Book</option>
+          </select>
+          {selectedUsers.length > 0 && (
+            <>
+              <span className="text-gray-400 text-sm whitespace-nowrap">{selectedUsers.length} selected</span>
+              <button
+                onClick={() => handleBulkTransfer('A')}
+                disabled={bulkTransferring || !lpConnected}
+                title={!lpConnected ? 'LP must be connected to move users to A-Book' : ''}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${
+                  !lpConnected 
+                    ? 'bg-gray-500/20 text-gray-500 border border-gray-500/30' 
+                    : 'bg-green-500/20 hover:bg-green-500/30 text-green-500 border border-green-500/30'
+                }`}
+              >
+                Move to A Book
+              </button>
+              <button
+                onClick={() => handleBulkTransfer('B')}
+                disabled={bulkTransferring}
+                className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-500 border border-blue-500/30 rounded-lg text-sm font-medium transition-colors whitespace-nowrap disabled:opacity-50"
+              >
+                Move to B Book
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Table */}
+        {loading ? (
+          <div className="text-center py-12 text-gray-500">Loading users...</div>
+        ) : filteredUsers.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">No users found</div>
+        ) : (
+          <>
+            {/* Mobile Card View */}
+            <div className="block lg:hidden p-4 space-y-3">
+              {filteredUsers.map((user) => (
+                <div key={user._id} className={`bg-dark-700 rounded-xl p-4 border ${selectedUsers.includes(user._id) ? 'border-primary-500' : 'border-gray-700'}`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedUsers.includes(user._id)}
+                        onChange={() => handleSelectUser(user._id)}
+                        className="rounded border-gray-600 bg-dark-700 text-primary-500 focus:ring-primary-500 cursor-pointer" 
+                      />
+                      <div>
+                        <p className="text-white font-medium">{user.firstName || 'N/A'}</p>
+                        <p className="text-gray-400 text-sm">{user.email}</p>
+                      </div>
                     </div>
+                    <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(user)}`}>
+                      {getStatusText(user)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between mb-3">
                     <div>
-                      <p className="text-gray-500">LP Trade ID</p>
-                      <p className="text-white font-mono text-xs">{selectedTrade.lpTrade.lpTradeId}</p>
+                      <p className="text-gray-500 text-xs">Current Book</p>
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                        user.bookType === 'A' ? 'bg-green-500/20 text-green-500' : 'bg-blue-500/20 text-blue-500'
+                      }`}>
+                        {user.bookType || 'B'} Book
+                      </span>
                     </div>
-                    <div>
-                      <p className="text-gray-500">Status</p>
-                      {getLpStatusBadge(selectedTrade.lpTrade.status)}
-                    </div>
-                    <div>
-                      <p className="text-gray-500">LP Open Price</p>
-                      <p className="text-white">{selectedTrade.lpTrade.lpOpenPrice?.toFixed(5) || '-'}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">LP P/L</p>
-                      <p className={selectedTrade.lpTrade.lpPnl >= 0 ? 'text-green-400' : 'text-red-400'}>
-                        {selectedTrade.lpTrade.lpPnl?.toFixed(2) || '0.00'}
+                    <div className="text-right">
+                      <p className="text-gray-500 text-xs">Changed At</p>
+                      <p className="text-gray-400 text-sm">
+                        {user.bookChangedAt ? new Date(user.bookChangedAt).toLocaleDateString() : '-'}
                       </p>
                     </div>
                   </div>
-                </div>
-              )}
-
-              {/* Audit History */}
-              {selectedTrade.auditLogs && selectedTrade.auditLogs.length > 0 && (
-                <div>
-                  <h4 className="text-white font-medium mb-3 flex items-center gap-2">
-                    <History size={16} /> Audit History
-                  </h4>
-                  <div className="space-y-2">
-                    {selectedTrade.auditLogs.map((log) => (
-                      <div key={log._id} className="p-3 bg-dark-700 rounded-lg text-sm">
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-400">{new Date(log.createdAt).toLocaleString()}</span>
-                          <span className={`px-2 py-0.5 rounded text-xs ${
-                            log.success ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                          }`}>
-                            {log.action.replace(/_/g, ' ')}
-                          </span>
-                        </div>
-                        <p className="text-gray-500 mt-1">By: {log.performedBy?.email}</p>
-                      </div>
-                    ))}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleTransfer(user._id, 'A')}
+                      disabled={user.bookType === 'A' || transferring === user._id || !lpConnected}
+                      title={!lpConnected ? 'LP must be connected to move users to A-Book' : ''}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        user.bookType === 'A'
+                          ? 'bg-green-500/20 text-green-500 opacity-50 cursor-not-allowed'
+                          : !lpConnected
+                            ? 'bg-gray-500/20 text-gray-500 opacity-50 cursor-not-allowed'
+                            : 'bg-green-500/10 hover:bg-green-500/20 text-green-500 border border-green-500/30'
+                      }`}
+                    >
+                      A Book
+                    </button>
+                    <button
+                      onClick={() => handleTransfer(user._id, 'B')}
+                      disabled={user.bookType === 'B' || !user.bookType || transferring === user._id}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        user.bookType === 'B' || !user.bookType
+                          ? 'bg-blue-500/20 text-blue-500 opacity-50 cursor-not-allowed'
+                          : 'bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 border border-blue-500/30'
+                      }`}
+                    >
+                      B Book
+                    </button>
                   </div>
                 </div>
-              )}
+              ))}
             </div>
-          </div>
-        </div>
-      )}
+
+            {/* Desktop Table */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-700">
+                    <th className="text-left text-gray-500 text-sm font-medium py-3 px-4">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedUsers.length === filteredUsers.length && filteredUsers.length > 0}
+                        onChange={handleSelectAll}
+                        className="rounded border-gray-600 bg-dark-700 text-primary-500 focus:ring-primary-500 cursor-pointer" 
+                      />
+                    </th>
+                    <th className="text-left text-gray-500 text-sm font-medium py-3 px-4">User</th>
+                    <th className="text-left text-gray-500 text-sm font-medium py-3 px-4">Email</th>
+                    <th className="text-left text-gray-500 text-sm font-medium py-3 px-4">Current Book</th>
+                    <th className="text-left text-gray-500 text-sm font-medium py-3 px-4">Changed At</th>
+                    <th className="text-left text-gray-500 text-sm font-medium py-3 px-4">Status</th>
+                    <th className="text-left text-gray-500 text-sm font-medium py-3 px-4">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((user) => (
+                    <tr key={user._id} className={`border-b border-gray-800 hover:bg-dark-700/50 ${selectedUsers.includes(user._id) ? 'bg-dark-700/30' : ''}`}>
+                      <td className="py-4 px-4">
+                        <input 
+                          type="checkbox" 
+                          checked={selectedUsers.includes(user._id)}
+                          onChange={() => handleSelectUser(user._id)}
+                          className="rounded border-gray-600 bg-dark-700 text-primary-500 focus:ring-primary-500 cursor-pointer" 
+                        />
+                      </td>
+                      <td className="py-4 px-4 text-white font-medium">{user.firstName || 'N/A'}</td>
+                      <td className="py-4 px-4 text-gray-400">{user.email}</td>
+                      <td className="py-4 px-4">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          user.bookType === 'A' ? 'bg-green-500/20 text-green-500' : 'bg-blue-500/20 text-blue-500'
+                        }`}>
+                          {user.bookType || 'B'} Book
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-gray-400">
+                        {user.bookChangedAt ? new Date(user.bookChangedAt).toLocaleDateString() : '-'}
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(user)}`}>
+                          {getStatusText(user)}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleTransfer(user._id, 'A')}
+                            disabled={user.bookType === 'A' || transferring === user._id || !lpConnected}
+                            title={!lpConnected ? 'LP must be connected to move users to A-Book' : ''}
+                            className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                              user.bookType === 'A'
+                                ? 'bg-green-500/20 text-green-500 opacity-50 cursor-not-allowed'
+                                : !lpConnected
+                                  ? 'bg-gray-500/20 text-gray-500 opacity-50 cursor-not-allowed'
+                                  : 'bg-green-500/10 hover:bg-green-500/20 text-green-500 border border-green-500/30'
+                            }`}
+                          >
+                            A Book
+                          </button>
+                          <button
+                            onClick={() => handleTransfer(user._id, 'B')}
+                            disabled={user.bookType === 'B' || !user.bookType || transferring === user._id}
+                            className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                              user.bookType === 'B' || !user.bookType
+                                ? 'bg-blue-500/20 text-blue-500 opacity-50 cursor-not-allowed'
+                                : 'bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 border border-blue-500/30'
+                            }`}
+                          >
+                            B Book
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
     </AdminLayout>
   )
 }

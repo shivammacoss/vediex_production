@@ -6,8 +6,22 @@ import BookAuditLog from '../models/BookAuditLog.js'
 import User from '../models/User.js'
 import Admin from '../models/Admin.js'
 import lpService from '../services/lpService.js'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 const router = express.Router()
+
+// Get LP settings from environment variables
+const getLpSettings = () => {
+  return {
+    lpApiKey: process.env.LP_API_KEY || '',
+    lpApiSecret: process.env.LP_API_SECRET || '',
+    lpApiUrl: process.env.LP_API_URL || 'http://localhost:3001',
+    corecenWsUrl: process.env.CORECEN_WS_URL || process.env.LP_API_URL || 'http://localhost:3001',
+    enabled: process.env.LP_ENABLED === 'true'
+  }
+}
 
 // Middleware to verify superadmin
 const verifySuperAdmin = async (req, res, next) => {
@@ -408,6 +422,347 @@ router.get('/book-stats', verifySuperAdmin, async (req, res) => {
     })
   } catch (error) {
     res.status(500).json({ success: false, message: error.message })
+  }
+})
+
+// ============================================
+// USER-BASED BOOK MANAGEMENT (Concordex style)
+// ============================================
+
+// GET /api/book/users - Get all users with book type info
+router.get('/users', async (req, res) => {
+  try {
+    const { bookType, search } = req.query
+    
+    let query = {}
+    let conditions = []
+    
+    if (bookType && bookType !== 'all') {
+      if (bookType === 'B') {
+        conditions.push({ $or: [{ bookType: 'B' }, { bookType: { $exists: false } }, { bookType: null }] })
+      } else {
+        conditions.push({ bookType: bookType })
+      }
+    }
+    if (search) {
+      conditions.push({
+        $or: [
+          { firstName: { $regex: search, $options: 'i' } },
+          { name: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } }
+        ]
+      })
+    }
+    
+    if (conditions.length > 0) {
+      query = conditions.length === 1 ? conditions[0] : { $and: conditions }
+    }
+    
+    const users = await User.find(query)
+      .select('firstName name email bookType bookChangedAt isBlocked isBanned createdAt')
+      .sort({ createdAt: -1 })
+    
+    const aBookUsers = await User.countDocuments({ bookType: 'A' })
+    const bBookUsers = await User.countDocuments({ $or: [{ bookType: 'B' }, { bookType: { $exists: false } }, { bookType: null }] })
+    const totalUsers = await User.countDocuments()
+    
+    res.json({
+      success: true,
+      users,
+      stats: {
+        aBookUsers,
+        bBookUsers,
+        totalUsers
+      }
+    })
+  } catch (error) {
+    console.error('Error fetching book users:', error)
+    res.status(500).json({ success: false, message: 'Error fetching users', error: error.message })
+  }
+})
+
+// PUT /api/book/users/:id/transfer - Transfer user to A or B book
+router.put('/users/:id/transfer', async (req, res) => {
+  try {
+    const { bookType } = req.body
+    
+    if (!bookType || !['A', 'B'].includes(bookType)) {
+      return res.status(400).json({ success: false, message: 'Invalid book type. Must be A or B' })
+    }
+    
+    const user = await User.findById(req.params.id)
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' })
+    }
+    
+    const previousBookType = user.bookType
+    user.bookType = bookType
+    user.bookChangedAt = new Date()
+    await user.save()
+    
+    console.log(`[Book Management] User ${user.email} transferred from ${previousBookType || 'B'} Book to ${bookType} Book`)
+    
+    res.json({
+      success: true,
+      message: `User transferred to ${bookType} Book successfully`,
+      user: {
+        _id: user._id,
+        firstName: user.firstName || user.name,
+        email: user.email,
+        bookType: user.bookType,
+        bookChangedAt: user.bookChangedAt
+      }
+    })
+  } catch (error) {
+    console.error('Error transferring user:', error)
+    res.status(500).json({ success: false, message: 'Error transferring user', error: error.message })
+  }
+})
+
+// PUT /api/book/users/bulk-transfer - Bulk transfer users to A or B book
+router.put('/users/bulk-transfer', async (req, res) => {
+  try {
+    const { userIds, bookType } = req.body
+    
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'No users selected' })
+    }
+    
+    if (!bookType || !['A', 'B'].includes(bookType)) {
+      return res.status(400).json({ success: false, message: 'Invalid book type. Must be A or B' })
+    }
+    
+    const result = await User.updateMany(
+      { _id: { $in: userIds } },
+      { 
+        $set: { 
+          bookType: bookType,
+          bookChangedAt: new Date()
+        }
+      }
+    )
+    
+    console.log(`[Book Management] Bulk transferred ${result.modifiedCount} users to ${bookType} Book`)
+    
+    res.json({
+      success: true,
+      message: `${result.modifiedCount} users transferred to ${bookType} Book successfully`,
+      modifiedCount: result.modifiedCount
+    })
+  } catch (error) {
+    console.error('Error bulk transferring users:', error)
+    res.status(500).json({ success: false, message: 'Error transferring users', error: error.message })
+  }
+})
+
+// ============================================
+// LP CONNECTION SETTINGS
+// ============================================
+
+// GET /api/book/lp-status - Check LP connection status
+router.get('/lp-status', async (req, res) => {
+  try {
+    const settings = getLpSettings()
+    
+    if (!settings.lpApiUrl) {
+      return res.json({
+        success: true,
+        connected: false,
+        message: 'LP API URL not configured'
+      })
+    }
+    
+    const baseUrl = settings.lpApiUrl.replace(/\/api\/?$/, '')
+    const healthUrl = `${baseUrl}/health`
+    
+    try {
+      const response = await fetch(healthUrl, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(3000)
+      })
+      
+      if (response.ok) {
+        res.json({
+          success: true,
+          connected: true,
+          message: 'LP is connected and responding',
+          lpUrl: settings.lpApiUrl
+        })
+      } else {
+        res.json({
+          success: true,
+          connected: false,
+          message: `LP returned status ${response.status}`
+        })
+      }
+    } catch (fetchError) {
+      res.json({
+        success: true,
+        connected: false,
+        message: fetchError.code === 'ECONNREFUSED' 
+          ? 'LP server is not running' 
+          : fetchError.name === 'TimeoutError' 
+            ? 'LP connection timed out' 
+            : fetchError.message
+      })
+    }
+  } catch (error) {
+    console.error('Error checking LP status:', error)
+    res.json({
+      success: false,
+      connected: false,
+      message: 'Error checking LP status'
+    })
+  }
+})
+
+// GET /api/book/lp-settings - Get LP connection settings
+router.get('/lp-settings', async (req, res) => {
+  try {
+    const settings = getLpSettings()
+    
+    const maskedSettings = {
+      ...settings,
+      lpApiKey: settings.lpApiKey ? `${settings.lpApiKey.substring(0, 8)}...${settings.lpApiKey.slice(-8)}` : '',
+      lpApiSecret: settings.lpApiSecret ? `${'*'.repeat(32)}...${settings.lpApiSecret.slice(-8)}` : ''
+    }
+    
+    res.json({
+      success: true,
+      settings: maskedSettings,
+      fullSettings: settings
+    })
+  } catch (error) {
+    console.error('Error fetching LP settings:', error)
+    res.status(500).json({ success: false, message: 'Error fetching LP settings', error: error.message })
+  }
+})
+
+// PUT /api/book/lp-settings - Update LP connection settings (runtime only)
+router.put('/lp-settings', async (req, res) => {
+  try {
+    const { lpApiKey, lpApiSecret, lpApiUrl, corecenWsUrl } = req.body
+    
+    // Update runtime settings (for permanent changes, update .env)
+    if (lpService.updateConfig) {
+      lpService.updateConfig({
+        apiUrl: lpApiUrl || process.env.LP_API_URL || 'http://localhost:3001',
+        apiKey: lpApiKey || process.env.LP_API_KEY || '',
+        apiSecret: lpApiSecret || process.env.LP_API_SECRET || ''
+      })
+    }
+    
+    console.log('[Book Management] LP settings updated (runtime)')
+    
+    res.json({
+      success: true,
+      message: 'LP settings updated (runtime only). For permanent changes, update .env file and restart server.'
+    })
+  } catch (error) {
+    console.error('Error updating LP settings:', error)
+    res.status(500).json({ success: false, message: 'Error updating LP settings', error: error.message })
+  }
+})
+
+// POST /api/book/test-lp-connection - Test LP connection
+router.post('/test-lp-connection', async (req, res) => {
+  try {
+    const { lpApiKey, lpApiSecret, lpApiUrl } = req.body
+    
+    if (!lpApiUrl) {
+      return res.status(400).json({ success: false, message: 'LP API URL is required' })
+    }
+    
+    const healthUrl = `${lpApiUrl}/health`
+    
+    console.log(`[Book Management] Testing LP connection to ${healthUrl}`)
+    
+    const response = await fetch(healthUrl, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(5000)
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      
+      if (lpApiKey && lpApiSecret) {
+        try {
+          const crypto = await import('crypto')
+          const timestamp = Date.now().toString()
+          const method = 'GET'
+          const path = '/api/v1/broker-api/trades/stats'
+          const body = ''
+          
+          const signatureData = timestamp + method + path + body
+          const signature = crypto.createHmac('sha256', lpApiSecret)
+            .update(signatureData)
+            .digest('hex')
+          
+          const authTestUrl = `${lpApiUrl}${path}`
+          const authResponse = await fetch(authTestUrl, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-API-Key': lpApiKey,
+              'X-Timestamp': timestamp,
+              'X-Signature': signature
+            },
+            signal: AbortSignal.timeout(5000)
+          })
+          
+          if (authResponse.ok) {
+            res.json({
+              success: true,
+              message: 'Connection successful! LP is reachable and credentials are valid.',
+              lpStatus: data
+            })
+          } else {
+            const authData = await authResponse.json().catch(() => ({}))
+            res.json({
+              success: true,
+              message: `LP is reachable but authentication failed: ${authData.error?.message || 'Check your API key and secret.'}`,
+              lpStatus: data,
+              authStatus: 'failed'
+            })
+          }
+        } catch (authError) {
+          res.json({
+            success: true,
+            message: 'LP is reachable. Authentication test skipped.',
+            lpStatus: data
+          })
+        }
+      } else {
+        res.json({
+          success: true,
+          message: 'Connection successful! LP is reachable. Add API credentials for full integration.',
+          lpStatus: data
+        })
+      }
+    } else {
+      res.json({
+        success: false,
+        message: `LP returned status ${response.status}. Check the URL and ensure LP is running.`
+      })
+    }
+  } catch (error) {
+    console.error('Error testing LP connection:', error)
+    
+    let message = 'Connection failed. '
+    if (error.name === 'TimeoutError' || error.code === 'ETIMEDOUT') {
+      message += 'Request timed out. Check if the LP server is running and accessible.'
+    } else if (error.code === 'ECONNREFUSED') {
+      message += 'Connection refused. Ensure the LP server is running on the specified URL.'
+    } else {
+      message += error.message
+    }
+    
+    res.json({
+      success: false,
+      message
+    })
   }
 })
 
