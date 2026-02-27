@@ -328,6 +328,145 @@ class LPService {
       console.error('[LP Service] Audit log error:', error)
     }
   }
+
+  // Update LP config at runtime
+  updateConfig(config) {
+    this.runtimeConfig = {
+      apiUrl: config.apiUrl || process.env.LP_API_URL || 'https://api.corecen.com',
+      apiKey: config.apiKey || process.env.LP_API_KEY || '',
+      apiSecret: config.apiSecret || process.env.LP_API_SECRET || ''
+    }
+    console.log('[LP Service] Runtime config updated')
+  }
+
+  // Get runtime config or env config
+  getCorecenConfig() {
+    return this.runtimeConfig || {
+      apiUrl: process.env.LP_API_URL || 'https://api.corecen.com',
+      apiKey: process.env.LP_API_KEY || '',
+      apiSecret: process.env.LP_API_SECRET || ''
+    }
+  }
+
+  // Generate HMAC signature for Corecen API
+  generateCorecenSignature(timestamp, method, path, body = '') {
+    const config = this.getCorecenConfig()
+    const signatureData = timestamp + method + path + body
+    return crypto
+      .createHmac('sha256', config.apiSecret)
+      .update(signatureData)
+      .digest('hex')
+  }
+
+  // Push A-Book trade to Corecen
+  async pushTradeToCorecen(trade, user) {
+    const config = this.getCorecenConfig()
+    
+    if (!config.apiKey || !config.apiSecret) {
+      console.log('[LP Service] Corecen API credentials not configured, skipping trade push')
+      return { success: false, message: 'LP credentials not configured' }
+    }
+
+    const timestamp = Date.now().toString()
+    const method = 'POST'
+    const path = '/api/v1/broker-api/trades/push'
+    
+    const tradeData = {
+      external_trade_id: trade.tradeId || trade._id.toString(),
+      user_id: user._id.toString(),
+      user_email: user.email,
+      user_name: user.firstName || user.name || 'Unknown',
+      symbol: trade.symbol,
+      side: trade.side.toUpperCase(),
+      volume: trade.quantity || trade.volume,
+      open_price: trade.openPrice,
+      sl: trade.stopLoss || 0,
+      tp: trade.takeProfit || 0,
+      margin: trade.marginUsed || trade.margin || 0,
+      leverage: trade.leverage || 100,
+      trading_account_id: trade.tradingAccountId?.toString() || '',
+      opened_at: trade.openedAt?.toISOString() || new Date().toISOString()
+    }
+
+    const body = JSON.stringify(tradeData)
+    const signature = this.generateCorecenSignature(timestamp, method, path, body)
+
+    try {
+      const response = await fetch(`${config.apiUrl}${path}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': config.apiKey,
+          'X-Timestamp': timestamp,
+          'X-Signature': signature
+        },
+        body
+      })
+
+      const data = await response.json()
+      
+      if (response.ok) {
+        console.log(`[LP Service] Trade ${trade.tradeId} pushed to Corecen successfully`)
+        return { success: true, data }
+      } else {
+        console.error(`[LP Service] Failed to push trade to Corecen:`, data)
+        return { success: false, error: data.error?.message || 'Push failed' }
+      }
+    } catch (error) {
+      console.error('[LP Service] Error pushing trade to Corecen:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  // Close A-Book trade on Corecen
+  async closeTradeOnCorecen(trade) {
+    const config = this.getCorecenConfig()
+    
+    if (!config.apiKey || !config.apiSecret) {
+      return { success: false, message: 'LP credentials not configured' }
+    }
+
+    const timestamp = Date.now().toString()
+    const method = 'POST'
+    const path = '/api/v1/broker-api/trades/close'
+    
+    const closeData = {
+      external_trade_id: trade.tradeId || trade._id.toString(),
+      close_price: trade.closePrice,
+      pnl: trade.pnl || trade.realizedPnl || 0,
+      closed_by: 'USER',
+      closed_at: trade.closedAt?.toISOString() || new Date().toISOString()
+    }
+
+    const body = JSON.stringify(closeData)
+    const signature = this.generateCorecenSignature(timestamp, method, path, body)
+
+    try {
+      const response = await fetch(`${config.apiUrl}${path}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': config.apiKey,
+          'X-Timestamp': timestamp,
+          'X-Signature': signature
+        },
+        body
+      })
+
+      const data = await response.json()
+      
+      if (response.ok) {
+        console.log(`[LP Service] Trade ${trade.tradeId} closed on Corecen`)
+        return { success: true, data }
+      } else {
+        console.error(`[LP Service] Failed to close trade on Corecen:`, data)
+        return { success: false, error: data.error?.message || 'Close failed' }
+      }
+    } catch (error) {
+      console.error('[LP Service] Error closing trade on Corecen:', error)
+      return { success: false, error: error.message }
+    }
+  }
 }
 
 // Singleton instance

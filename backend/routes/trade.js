@@ -10,6 +10,8 @@ import copyTradingEngine from '../services/copyTradingEngine.js'
 import ibEngine from '../services/ibEngineNew.js'
 import MasterTrader from '../models/MasterTrader.js'
 import infowayService from '../services/infowayService.js'
+import lpService from '../services/lpService.js'
+import User from '../models/User.js'
 
 // Fetch fresh price from Infoway
 async function getFreshPrice(symbol) {
@@ -179,6 +181,19 @@ router.post('/open', async (req, res) => {
       }
     }
 
+    // Check if user is A-Book and push trade to Corecen LP
+    try {
+      const user = await User.findById(userId)
+      if (user && user.bookType === 'A') {
+        console.log(`[Trade] User ${user.email} is A-Book, pushing trade to Corecen`)
+        lpService.pushTradeToCorecen(trade, user).catch(err => {
+          console.error('[Trade] Failed to push A-Book trade to Corecen:', err)
+        })
+      }
+    } catch (lpError) {
+      console.error('[Trade] Error checking A-Book status:', lpError)
+    }
+
     res.json({
       success: true,
       message: 'Trade opened successfully',
@@ -317,6 +332,19 @@ router.post('/close', async (req, res) => {
       }
     } catch (ibError) {
       console.error('Error processing IB commission:', ibError)
+    }
+
+    // Check if user is A-Book and close trade on Corecen LP
+    try {
+      const user = await User.findById(result.trade.userId)
+      if (user && user.bookType === 'A') {
+        console.log(`[Trade] User ${user.email} is A-Book, closing trade on Corecen`)
+        lpService.closeTradeOnCorecen(result.trade).catch(err => {
+          console.error('[Trade] Failed to close A-Book trade on Corecen:', err)
+        })
+      }
+    } catch (lpError) {
+      console.error('[Trade] Error checking A-Book status for close:', lpError)
     }
 
     res.json({
