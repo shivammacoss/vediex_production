@@ -536,11 +536,11 @@ router.put('/users/:id/transfer', async (req, res) => {
         
         console.log(`[Book Management] Found ${openTrades.length} open trades to push to Corecen LP`)
         
-        // Push each open trade to Corecen LP (non-blocking)
+        // Push each open trade to Corecen LP (non-blocking) with retroactive flag
         for (const trade of openTrades) {
-          lpService.pushTradeToCorecen(trade, user).then(result => {
+          lpService.pushTradeToCorecen(trade, user, { retroactive: true }).then(result => {
             if (result.success) {
-              console.log(`[Book Management] Pushed trade ${trade.tradeId} to Corecen LP`)
+              console.log(`[Book Management] Pushed trade ${trade.tradeId} to Corecen LP (retroactive)`)
             } else {
               console.error(`[Book Management] Failed to push trade ${trade.tradeId}:`, result.error || result.message)
             }

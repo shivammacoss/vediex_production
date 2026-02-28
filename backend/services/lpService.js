@@ -365,7 +365,8 @@ class LPService {
   }
 
   // Push A-Book trade to Corecen
-  async pushTradeToCorecen(trade, user) {
+  // Options: { retroactive: true } - for pushing existing trades when user transferred to A-Book
+  async pushTradeToCorecen(trade, user, options = {}) {
     const config = this.getCorecenConfig()
     
     if (!config.apiKey || !config.apiSecret) {
@@ -391,7 +392,8 @@ class LPService {
       margin: trade.marginUsed || trade.margin || 0,
       leverage: trade.leverage || 100,
       trading_account_id: trade.tradingAccountId?.toString() || '',
-      opened_at: trade.openedAt?.toISOString() || new Date().toISOString()
+      opened_at: trade.openedAt?.toISOString() || new Date().toISOString(),
+      retroactive: options.retroactive || false // Skip timestamp validation for retroactive pushes
     }
 
     const body = JSON.stringify(tradeData)
