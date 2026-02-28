@@ -204,16 +204,33 @@ class IBEngine {
 
         // Get rate for this level - support both levelCommissions object and levels array
         let rate = 0
+        let rateSource = 'none'
+        
         if (plan.levelCommissions && plan.levelCommissions[`level${level}`]) {
           rate = plan.levelCommissions[`level${level}`]
+          rateSource = 'levelCommissions'
         } else if (plan.levels && plan.levels.length > 0) {
           const levelConfig = plan.levels.find(l => l.level === level)
           rate = levelConfig ? levelConfig.rate : 0
+          rateSource = 'levels array'
         } else if (plan.getRateForLevel) {
           rate = plan.getRateForLevel(level)
+          rateSource = 'getRateForLevel method'
         }
         
-        console.log(`Level ${level} rate: ${rate}`)
+        console.log(`[IB_COMMISSION_DEBUG] ========================================`)
+        console.log(`[IB_COMMISSION_DEBUG] Trade ID: ${trade.tradeId || trade._id}`)
+        console.log(`[IB_COMMISSION_DEBUG] IB: ${ibUser.firstName} (${ibUser._id})`)
+        console.log(`[IB_COMMISSION_DEBUG] Level: ${level}`)
+        console.log(`[IB_COMMISSION_DEBUG] Plan ID: ${plan._id}`)
+        console.log(`[IB_COMMISSION_DEBUG] Plan Name: ${plan.name}`)
+        console.log(`[IB_COMMISSION_DEBUG] Commission Type: ${plan.commissionType}`)
+        console.log(`[IB_COMMISSION_DEBUG] Rate Source: ${rateSource}`)
+        console.log(`[IB_COMMISSION_DEBUG] Rate: ${rate}`)
+        console.log(`[IB_COMMISSION_DEBUG] Lot Size: ${trade.quantity}`)
+        console.log(`[IB_COMMISSION_DEBUG] Plan Levels:`, JSON.stringify(plan.levels))
+        console.log(`[IB_COMMISSION_DEBUG] Plan levelCommissions:`, JSON.stringify(plan.levelCommissions))
+        console.log(`[IB_COMMISSION_DEBUG] ========================================`)
         
         if (rate <= 0) {
           console.log(`Rate is 0 for level ${level}`)

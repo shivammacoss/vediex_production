@@ -589,8 +589,23 @@ router.put('/admin/plans/:planId', async (req, res) => {
     if (description !== undefined) plan.description = description
     if (maxLevels) plan.maxLevels = maxLevels
     if (commissionType) plan.commissionType = commissionType
-    if (levelCommissions) plan.levelCommissions = levelCommissions
-    if (commissionSources) plan.commissionSources = commissionSources
+    
+    // Convert levelCommissions object to levels array for IBPlanNew.js compatibility
+    if (levelCommissions) {
+      const levels = []
+      for (let i = 1; i <= (maxLevels || plan.maxLevels || 5); i++) {
+        const rate = levelCommissions[`level${i}`]
+        if (rate !== undefined) {
+          levels.push({ level: i, rate: Number(rate) })
+        }
+      }
+      if (levels.length > 0) {
+        plan.levels = levels
+      }
+      console.log(`[IB Plan Update] Converting levelCommissions to levels array:`, levels)
+    }
+    
+    if (commissionSources) plan.source = commissionSources
     if (minWithdrawalAmount !== undefined) plan.minWithdrawalAmount = minWithdrawalAmount
     if (isActive !== undefined) plan.isActive = isActive
     if (isDefault !== undefined) plan.isDefault = isDefault
