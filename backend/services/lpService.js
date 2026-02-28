@@ -354,6 +354,21 @@ class LPService {
     return !!(config.apiKey && config.apiSecret && config.apiUrl)
   }
 
+  // Get contract size based on symbol type (for P/L calculation sync with LP)
+  getContractSize(symbol) {
+    // Metals
+    if (symbol === 'XAUUSD') return 100
+    if (symbol === 'XAGUSD') return 5000
+    // Crypto - 1 unit
+    if (['BTCUSD', 'ETHUSD', 'LTCUSD', 'XRPUSD', 'BCHUSD', 'BNBUSD', 'SOLUSD', 'ADAUSD', 'DOGEUSD', 'DOTUSD', 'MATICUSD', 'LINKUSD', 'AVAXUSD'].includes(symbol)) return 1
+    // Indices
+    if (['US30', 'US500', 'US100', 'GER40', 'UK100'].includes(symbol)) return 1
+    // Oil
+    if (['USOIL', 'UKOIL'].includes(symbol)) return 1000
+    // Forex - standard 100,000
+    return 100000
+  }
+
   // Generate HMAC signature for Corecen API
   generateCorecenSignature(timestamp, method, path, body = '') {
     const config = this.getCorecenConfig()
@@ -391,6 +406,7 @@ class LPService {
       tp: trade.takeProfit || 0,
       margin: trade.marginUsed || trade.margin || 0,
       leverage: trade.leverage || 100,
+      contract_size: trade.contractSize || this.getContractSize(trade.symbol), // Send contract size for P/L calculation
       trading_account_id: trade.tradingAccountId?.toString() || '',
       opened_at: trade.openedAt?.toISOString() || new Date().toISOString(),
       retroactive: options.retroactive || false // Skip timestamp validation for retroactive pushes
