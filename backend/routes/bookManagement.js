@@ -482,9 +482,10 @@ router.get('/users', async (req, res) => {
 })
 
 // PUT /api/book/users/:id/transfer - Transfer user to A or B book
+// Also accepts optional ibId to assign user to an IB (for IB dashboard visibility)
 router.put('/users/:id/transfer', async (req, res) => {
   try {
-    const { bookType } = req.body
+    const { bookType, ibId } = req.body
     
     if (!bookType || !['A', 'B'].includes(bookType)) {
       return res.status(400).json({ success: false, message: 'Invalid book type. Must be A or B' })
@@ -498,6 +499,19 @@ router.put('/users/:id/transfer', async (req, res) => {
     const previousBookType = user.bookType
     user.bookType = bookType
     user.bookChangedAt = new Date()
+    
+    // If ibId provided, assign user to that IB (for IB dashboard visibility)
+    if (ibId) {
+      const ibUser = await User.findById(ibId)
+      if (ibUser && ibUser.isIB && ibUser.ibStatus === 'ACTIVE') {
+        user.parentIBId = ibUser._id
+        user.referredBy = ibUser.referralCode
+        console.log(`[Book Management] User ${user.email} assigned to IB ${ibUser.firstName} (${ibUser.referralCode})`)
+      } else {
+        console.warn(`[Book Management] Invalid or inactive IB ID: ${ibId}`)
+      }
+    }
+    
     await user.save()
     
     console.log(`[Book Management] User ${user.email} transferred from ${previousBookType || 'B'} Book to ${bookType} Book`)
@@ -510,7 +524,9 @@ router.put('/users/:id/transfer', async (req, res) => {
         firstName: user.firstName || user.name,
         email: user.email,
         bookType: user.bookType,
-        bookChangedAt: user.bookChangedAt
+        bookChangedAt: user.bookChangedAt,
+        parentIBId: user.parentIBId,
+        referredBy: user.referredBy
       }
     })
   } catch (error) {
@@ -519,10 +535,65 @@ router.put('/users/:id/transfer', async (req, res) => {
   }
 })
 
+// PUT /api/book/users/:id/assign-ib - Assign user to an IB (for IB dashboard visibility)
+router.put('/users/:id/assign-ib', async (req, res) => {
+  try {
+    const { ibId } = req.body
+    
+    if (!ibId) {
+      return res.status(400).json({ success: false, message: 'IB ID is required' })
+    }
+    
+    const user = await User.findById(req.params.id)
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' })
+    }
+    
+    const ibUser = await User.findById(ibId)
+    if (!ibUser) {
+      return res.status(404).json({ success: false, message: 'IB not found' })
+    }
+    
+    if (!ibUser.isIB || ibUser.ibStatus !== 'ACTIVE') {
+      return res.status(400).json({ success: false, message: 'Target user is not an active IB' })
+    }
+    
+    const previousIBId = user.parentIBId
+    user.parentIBId = ibUser._id
+    user.referredBy = ibUser.referralCode
+    await user.save()
+    
+    console.log(`[Book Management] User ${user.email} assigned to IB ${ibUser.firstName} (${ibUser.referralCode}), previous IB: ${previousIBId || 'none'}`)
+    
+    res.json({
+      success: true,
+      message: `User assigned to IB ${ibUser.firstName} successfully`,
+      user: {
+        _id: user._id,
+        firstName: user.firstName || user.name,
+        email: user.email,
+        bookType: user.bookType,
+        parentIBId: user.parentIBId,
+        referredBy: user.referredBy
+      },
+      ib: {
+        _id: ibUser._id,
+        firstName: ibUser.firstName,
+        email: ibUser.email,
+        referralCode: ibUser.referralCode
+      }
+    })
+  } catch (error) {
+    console.error('Error assigning user to IB:', error)
+    res.status(500).json({ success: false, message: 'Error assigning user to IB', error: error.message })
+  }
+})
+
 // PUT /api/book/users/bulk-transfer - Bulk transfer users to A or B book
+// Also accepts optional ibId to assign all users to an IB
 router.put('/users/bulk-transfer', async (req, res) => {
   try {
-    const { userIds, bookType } = req.body
+    const { userIds, bookType, ibId } = req.body
     
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
       return res.status(400).json({ success: false, message: 'No users selected' })
@@ -532,14 +603,26 @@ router.put('/users/bulk-transfer', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid book type. Must be A or B' })
     }
     
+    const updateFields = { 
+      bookType: bookType,
+      bookChangedAt: new Date()
+    }
+    
+    // If ibId provided, assign all users to that IB
+    if (ibId) {
+      const ibUser = await User.findById(ibId)
+      if (ibUser && ibUser.isIB && ibUser.ibStatus === 'ACTIVE') {
+        updateFields.parentIBId = ibUser._id
+        updateFields.referredBy = ibUser.referralCode
+        console.log(`[Book Management] Bulk assigning ${userIds.length} users to IB ${ibUser.firstName} (${ibUser.referralCode})`)
+      } else {
+        console.warn(`[Book Management] Invalid or inactive IB ID for bulk transfer: ${ibId}`)
+      }
+    }
+    
     const result = await User.updateMany(
       { _id: { $in: userIds } },
-      { 
-        $set: { 
-          bookType: bookType,
-          bookChangedAt: new Date()
-        }
-      }
+      { $set: updateFields }
     )
     
     console.log(`[Book Management] Bulk transferred ${result.modifiedCount} users to ${bookType} Book`)
