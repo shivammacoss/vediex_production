@@ -185,9 +185,18 @@ router.post('/open', async (req, res) => {
     try {
       const user = await User.findById(userId)
       if (user && user.bookType === 'A') {
-        console.log(`[Trade] User ${user.email} is A-Book, pushing trade to Corecen`)
-        lpService.pushTradeToCorecen(trade, user).catch(err => {
-          console.error('[Trade] Failed to push A-Book trade to Corecen:', err)
+        console.log(`[A-BOOK PUSH] ========================================`)
+        console.log(`[A-BOOK PUSH] User: ${user.email}`)
+        console.log(`[A-BOOK PUSH] Trade ID (internal): ${trade._id}`)
+        console.log(`[A-BOOK PUSH] Trade ID (tradeId): ${trade.tradeId}`)
+        console.log(`[A-BOOK PUSH] Symbol: ${trade.symbol}, Side: ${trade.side}`)
+        console.log(`[A-BOOK PUSH] Quantity: ${trade.quantity}, Price: ${trade.openPrice}`)
+        console.log(`[A-BOOK PUSH] ========================================`)
+        
+        lpService.pushTradeToCorecen(trade, user).then(result => {
+          console.log(`[A-BOOK PUSH] Result:`, JSON.stringify(result, null, 2))
+        }).catch(err => {
+          console.error('[A-BOOK PUSH] FAILED:', err.message)
         })
       }
     } catch (lpError) {
@@ -338,9 +347,18 @@ router.post('/close', async (req, res) => {
     try {
       const user = await User.findById(result.trade.userId)
       if (user && user.bookType === 'A') {
-        console.log(`[Trade] User ${user.email} is A-Book, closing trade on Corecen`)
-        lpService.closeTradeOnCorecen(result.trade).catch(err => {
-          console.error('[Trade] Failed to close A-Book trade on Corecen:', err)
+        console.log(`[A-BOOK CLOSE] ========================================`)
+        console.log(`[A-BOOK CLOSE] User: ${user.email}`)
+        console.log(`[A-BOOK CLOSE] Trade ID (internal): ${result.trade._id}`)
+        console.log(`[A-BOOK CLOSE] Trade ID (tradeId): ${result.trade.tradeId}`)
+        console.log(`[A-BOOK CLOSE] Close Price: ${result.trade.closePrice}`)
+        console.log(`[A-BOOK CLOSE] PnL: ${result.trade.pnl || result.realizedPnl}`)
+        console.log(`[A-BOOK CLOSE] ========================================`)
+        
+        lpService.closeTradeOnCorecen(result.trade).then(closeResult => {
+          console.log(`[A-BOOK CLOSE] Result:`, JSON.stringify(closeResult, null, 2))
+        }).catch(err => {
+          console.error('[A-BOOK CLOSE] FAILED:', err.message)
         })
       }
     } catch (lpError) {
