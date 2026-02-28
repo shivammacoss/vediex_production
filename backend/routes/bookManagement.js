@@ -516,9 +516,47 @@ router.put('/users/:id/transfer', async (req, res) => {
     
     console.log(`[Book Management] User ${user.email} transferred from ${previousBookType || 'B'} Book to ${bookType} Book`)
     
+    // If transferring to A-Book, push existing open trades to Corecen LP
+    let pushedTrades = 0
+    if (bookType === 'A' && previousBookType !== 'A') {
+      try {
+        const Trade = (await import('../models/Trade.js')).default
+        const TradingAccount = (await import('../models/TradingAccount.js')).default
+        const lpService = (await import('../services/lpService.js')).default
+        
+        // Get user's trading accounts
+        const accounts = await TradingAccount.find({ userId: user._id })
+        const accountIds = accounts.map(a => a._id)
+        
+        // Get all open trades
+        const openTrades = await Trade.find({ 
+          tradingAccountId: { $in: accountIds }, 
+          status: 'OPEN' 
+        })
+        
+        console.log(`[Book Management] Found ${openTrades.length} open trades to push to Corecen LP`)
+        
+        // Push each open trade to Corecen LP (non-blocking)
+        for (const trade of openTrades) {
+          lpService.pushTradeToCorecen(trade, user).then(result => {
+            if (result.success) {
+              console.log(`[Book Management] Pushed trade ${trade.tradeId} to Corecen LP`)
+            } else {
+              console.error(`[Book Management] Failed to push trade ${trade.tradeId}:`, result.error || result.message)
+            }
+          }).catch(err => {
+            console.error(`[Book Management] Error pushing trade ${trade.tradeId}:`, err.message)
+          })
+          pushedTrades++
+        }
+      } catch (pushError) {
+        console.error('[Book Management] Error pushing existing trades to LP:', pushError.message)
+      }
+    }
+    
     res.json({
       success: true,
-      message: `User transferred to ${bookType} Book successfully`,
+      message: `User transferred to ${bookType} Book successfully${pushedTrades > 0 ? `. Pushing ${pushedTrades} open trades to LP.` : ''}`,
       user: {
         _id: user._id,
         firstName: user.firstName || user.name,
@@ -527,7 +565,8 @@ router.put('/users/:id/transfer', async (req, res) => {
         bookChangedAt: user.bookChangedAt,
         parentIBId: user.parentIBId,
         referredBy: user.referredBy
-      }
+      },
+      pushedTrades
     })
   } catch (error) {
     console.error('Error transferring user:', error)
