@@ -4,6 +4,7 @@ import Charges from '../models/Charges.js'
 import TradeSettings from '../models/TradeSettings.js'
 import AdminLog from '../models/AdminLog.js'
 import ibEngine from './ibEngineNew.js'
+import lpService from './lpService.js'
 
 class TradeEngine {
   constructor() {
@@ -426,6 +427,20 @@ class TradeEngine {
       await ibEngine.processTradeCommission(trade)
     } catch (ibError) {
       console.error('Error processing IB commission:', ibError)
+    }
+
+    // Close A-Book trade on Corecen LP
+    if (trade.bookType === 'A' && lpService.isConfigured()) {
+      try {
+        const lpResult = await lpService.closeTradeOnCorecen(trade)
+        if (lpResult.success) {
+          console.log(`[TradeEngine] A-Book trade ${trade.tradeId} closed on Corecen LP`)
+        } else {
+          console.error(`[TradeEngine] Failed to close A-Book trade on LP: ${lpResult.error}`)
+        }
+      } catch (lpError) {
+        console.error('[TradeEngine] Error closing trade on LP:', lpError)
+      }
     }
 
     // Close follower trades if this is a master trade

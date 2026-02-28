@@ -348,6 +348,12 @@ class LPService {
     }
   }
 
+  // Check if LP is configured
+  isConfigured() {
+    const config = this.getCorecenConfig()
+    return !!(config.apiKey && config.apiSecret && config.apiUrl)
+  }
+
   // Generate HMAC signature for Corecen API
   generateCorecenSignature(timestamp, method, path, body = '') {
     const config = this.getCorecenConfig()
@@ -422,7 +428,15 @@ class LPService {
   async closeTradeOnCorecen(trade) {
     const config = this.getCorecenConfig()
     
+    console.log(`[LP Service] ========== CLOSE TRADE REQUEST ==========`)
+    console.log(`[LP Service] Trade ID: ${trade.tradeId}`)
+    console.log(`[LP Service] LP API URL: ${config.apiUrl}`)
+    console.log(`[LP Service] LP API Key configured: ${!!config.apiKey}`)
+    console.log(`[LP Service] LP API Secret configured: ${!!config.apiSecret}`)
+    
     if (!config.apiKey || !config.apiSecret) {
+      console.error('[LP Service] ✗ Corecen API credentials not configured')
+      console.log(`[LP Service] ==========================================`)
       return { success: false, message: 'LP credentials not configured' }
     }
 
@@ -434,14 +448,18 @@ class LPService {
       external_trade_id: trade.tradeId || trade._id.toString(),
       close_price: trade.closePrice,
       pnl: trade.pnl || trade.realizedPnl || 0,
-      closed_by: 'USER',
+      closed_by: trade.closedBy || 'USER',
       closed_at: trade.closedAt?.toISOString() || new Date().toISOString()
     }
+
+    console.log(`[LP Service] Close payload:`, JSON.stringify(closeData, null, 2))
 
     const body = JSON.stringify(closeData)
     const signature = this.generateCorecenSignature(timestamp, method, path, body)
 
     try {
+      console.log(`[LP Service] Sending close request to ${config.apiUrl}${path}`)
+      
       const response = await fetch(`${config.apiUrl}${path}`, {
         method: 'POST',
         headers: {
@@ -456,14 +474,20 @@ class LPService {
       const data = await response.json()
       
       if (response.ok) {
-        console.log(`[LP Service] Trade ${trade.tradeId} closed on Corecen`)
+        console.log(`[LP Service] ✓ Trade ${trade.tradeId} closed on Corecen`)
+        console.log(`[LP Service] Response:`, JSON.stringify(data, null, 2))
+        console.log(`[LP Service] ==========================================`)
         return { success: true, data }
       } else {
-        console.error(`[LP Service] Failed to close trade on Corecen:`, data)
+        console.error(`[LP Service] ✗ Failed to close trade on Corecen`)
+        console.error(`[LP Service] HTTP Status: ${response.status}`)
+        console.error(`[LP Service] Response:`, JSON.stringify(data, null, 2))
+        console.log(`[LP Service] ==========================================`)
         return { success: false, error: data.error?.message || 'Close failed' }
       }
     } catch (error) {
-      console.error('[LP Service] Error closing trade on Corecen:', error)
+      console.error('[LP Service] ✗ Error closing trade on Corecen:', error.message)
+      console.log(`[LP Service] ==========================================`)
       return { success: false, error: error.message }
     }
   }
