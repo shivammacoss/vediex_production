@@ -253,7 +253,7 @@ const AdminCopyTrade = () => {
                   </div>
                   <div className="flex gap-2 mt-4 justify-end">
                     <button onClick={() => handleReject(app._id)} className="px-4 py-2 bg-red-500/20 text-red-500 rounded-lg">Reject</button>
-                    <button onClick={() => { setSelectedMaster(app); setShowApproveModal(true) }} className="px-4 py-2 bg-green-500 text-white rounded-lg">Approve</button>
+                    <button onClick={() => { setSelectedMaster(app); setApproveForm({ approvedCommissionPercentage: app.requestedCommissionPercentage || 10, adminSharePercentage: 30 }); setShowApproveModal(true) }} className="px-4 py-2 bg-green-500 text-white rounded-lg">Approve</button>
                   </div>
                 </div>
               ))}
@@ -313,7 +313,7 @@ const AdminCopyTrade = () => {
                       <div className="flex items-center gap-1">
                         {master.status === 'PENDING' && (
                           <>
-                            <button onClick={() => { setSelectedMaster(master); setShowApproveModal(true) }} className="p-2 hover:bg-dark-600 rounded-lg text-gray-400 hover:text-green-500" title="Approve"><Check size={16} /></button>
+                            <button onClick={() => { setSelectedMaster(master); setApproveForm({ approvedCommissionPercentage: master.requestedCommissionPercentage || 10, adminSharePercentage: 30 }); setShowApproveModal(true) }} className="p-2 hover:bg-dark-600 rounded-lg text-gray-400 hover:text-green-500" title="Approve"><Check size={16} /></button>
                             <button onClick={() => handleReject(master._id)} className="p-2 hover:bg-dark-600 rounded-lg text-gray-400 hover:text-red-500" title="Reject"><X size={16} /></button>
                           </>
                         )}
