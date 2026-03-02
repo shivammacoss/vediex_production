@@ -202,18 +202,23 @@ class IBEngine {
           continue
         }
 
-        // Get rate for this level - support both levelCommissions object and levels array
+        // Get rate for this level - prioritize levels array (IBPlanNew.js format)
         let rate = 0
         let rateSource = 'none'
         
-        if (plan.levelCommissions && plan.levelCommissions[`level${level}`]) {
-          rate = plan.levelCommissions[`level${level}`]
-          rateSource = 'levelCommissions'
-        } else if (plan.levels && plan.levels.length > 0) {
+        // First check levels array (IBPlanNew.js format - this is the primary format)
+        if (plan.levels && plan.levels.length > 0) {
           const levelConfig = plan.levels.find(l => l.level === level)
           rate = levelConfig ? levelConfig.rate : 0
           rateSource = 'levels array'
-        } else if (plan.getRateForLevel) {
+        } 
+        // Fallback to levelCommissions object (old IBPlan.js format)
+        else if (plan.levelCommissions && plan.levelCommissions[`level${level}`]) {
+          rate = plan.levelCommissions[`level${level}`]
+          rateSource = 'levelCommissions'
+        } 
+        // Last resort: use getRateForLevel method
+        else if (plan.getRateForLevel) {
           rate = plan.getRateForLevel(level)
           rateSource = 'getRateForLevel method'
         }
