@@ -1104,12 +1104,21 @@ const AdminIBManagement = () => {
 
 // Plan Modal Component
 const PlanModal = ({ plan, onSave, onClose }) => {
+  // Build levelCommissions from plan data, ensuring all 5 levels have values
+  const buildLevelCommissions = () => {
+    const defaultCommissions = { level1: 0, level2: 0, level3: 0, level4: 0, level5: 0 }
+    if (plan?.levelCommissions) {
+      return { ...defaultCommissions, ...plan.levelCommissions }
+    }
+    return defaultCommissions
+  }
+
   const [formData, setFormData] = useState({
     name: plan?.name || '',
     description: plan?.description || '',
     maxLevels: plan?.maxLevels || 3,
     commissionType: plan?.commissionType || 'PER_LOT',
-    levelCommissions: plan?.levelCommissions || { level1: 5, level2: 3, level3: 2, level4: 1, level5: 0.5 },
+    levelCommissions: buildLevelCommissions(),
     isDefault: plan?.isDefault || false
   })
 

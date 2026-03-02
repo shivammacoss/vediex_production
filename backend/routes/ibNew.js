@@ -543,10 +543,11 @@ router.post('/admin/plans', async (req, res) => {
     }
 
     // Convert levelCommissions object to levels array for IBPlanNew.js compatibility
+    // Use provided values or default to 0 (not hardcoded values)
     const levels = []
-    const lc = levelCommissions || { level1: 5, level2: 3, level3: 2, level4: 1, level5: 0.5 }
+    const lc = levelCommissions || {}
     for (let i = 1; i <= (maxLevels || 3); i++) {
-      levels.push({ level: i, rate: lc[`level${i}`] || 0 })
+      levels.push({ level: i, rate: lc[`level${i}`] !== undefined ? Number(lc[`level${i}`]) : 0 })
     }
 
     const plan = await IBPlan.create({
