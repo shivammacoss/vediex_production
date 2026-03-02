@@ -456,8 +456,32 @@ router.post('/:id/reset-demo', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Only demo accounts can be reset' })
     }
 
-    // Close all open trades for this account
+    // Close all open trades for this account - properly sync with LP for A-Book trades
     const Trade = (await import('../models/Trade.js')).default
+    const lpService = (await import('../services/lpService.js')).default
+    
+    // Find all open trades
+    const openTrades = await Trade.find({ tradingAccountId: account._id, status: 'OPEN' })
+    
+    // Close A-Book trades in LP first
+    if (lpService.isConfigured()) {
+      for (const trade of openTrades) {
+        if (trade.bookType === 'A') {
+          try {
+            trade.status = 'CLOSED'
+            trade.closedBy = 'DEMO_RESET'
+            trade.closedAt = new Date()
+            trade.realizedPnl = 0
+            await lpService.closeTradeOnCorecen(trade)
+            console.log(`[DemoReset] Closed A-Book trade ${trade.tradeId} in LP`)
+          } catch (lpError) {
+            console.error(`[DemoReset] Error closing trade in LP: ${lpError.message}`)
+          }
+        }
+      }
+    }
+    
+    // Now close all trades locally
     await Trade.updateMany(
       { tradingAccountId: account._id, status: 'OPEN' },
       { 
