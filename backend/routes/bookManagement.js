@@ -516,8 +516,62 @@ router.put('/users/:id/transfer', async (req, res) => {
     
     console.log(`[Book Management] User ${user.email} transferred from ${previousBookType || 'B'} Book to ${bookType} Book`)
     
-    // If transferring to A-Book, push existing open trades to Corecen LP
+    let closedTradesCount = 0
     let pushedTrades = 0
+    
+    // If transferring from A-Book to B-Book, close all open trades on Corecen LP
+    if (bookType === 'B' && previousBookType === 'A') {
+      try {
+        const Trade = (await import('../models/Trade.js')).default
+        const TradingAccount = (await import('../models/TradingAccount.js')).default
+        const lpService = (await import('../services/lpService.js')).default
+        
+        // Get user's trading accounts
+        const accounts = await TradingAccount.find({ userId: user._id })
+        const accountIds = accounts.map(a => a._id)
+        
+        // Find all open A-Book trades for this user
+        const openTrades = await Trade.find({
+          tradingAccountId: { $in: accountIds },
+          bookType: 'A',
+          status: 'OPEN'
+        })
+        
+        console.log(`[Book Management] Found ${openTrades.length} open A-Book trades to close on Corecen`)
+        
+        // Close each trade on Corecen LP
+        for (const trade of openTrades) {
+          try {
+            // Set close data for LP sync
+            trade.closePrice = trade.currentPrice || trade.openPrice
+            trade.closedAt = new Date()
+            trade.closedBy = 'ADMIN'
+            trade.realizedPnl = 0 // Will be calculated by Corecen
+            
+            const lpResult = await lpService.closeTradeOnCorecen(trade)
+            if (lpResult.success) {
+              console.log(`[Book Management] Trade ${trade.tradeId} closed on Corecen LP`)
+              closedTradesCount++
+            } else {
+              console.error(`[Book Management] Failed to close trade ${trade.tradeId} on Corecen: ${lpResult.error}`)
+            }
+            
+            // Update local trade bookType to B (so it won't sync anymore)
+            trade.bookType = 'B'
+            trade.lpSyncStatus = 'NOT_APPLICABLE'
+            await trade.save()
+          } catch (tradeError) {
+            console.error(`[Book Management] Error closing trade ${trade.tradeId}:`, tradeError.message)
+          }
+        }
+        
+        console.log(`[Book Management] Closed ${closedTradesCount}/${openTrades.length} trades on Corecen LP`)
+      } catch (closeError) {
+        console.error('[Book Management] Error closing trades on LP:', closeError.message)
+      }
+    }
+    
+    // If transferring to A-Book, push existing open trades to Corecen LP
     if (bookType === 'A' && previousBookType !== 'A') {
       try {
         const Trade = (await import('../models/Trade.js')).default
@@ -554,9 +608,17 @@ router.put('/users/:id/transfer', async (req, res) => {
       }
     }
     
+    let statusMessage = `User transferred to ${bookType} Book successfully`
+    if (closedTradesCount > 0) {
+      statusMessage += `. ${closedTradesCount} trades closed on LP.`
+    }
+    if (pushedTrades > 0) {
+      statusMessage += `. Pushing ${pushedTrades} open trades to LP.`
+    }
+    
     res.json({
       success: true,
-      message: `User transferred to ${bookType} Book successfully${pushedTrades > 0 ? `. Pushing ${pushedTrades} open trades to LP.` : ''}`,
+      message: statusMessage,
       user: {
         _id: user._id,
         firstName: user.firstName || user.name,
@@ -566,7 +628,8 @@ router.put('/users/:id/transfer', async (req, res) => {
         parentIBId: user.parentIBId,
         referredBy: user.referredBy
       },
-      pushedTrades
+      pushedTrades,
+      closedTradesOnLP: closedTradesCount
     })
   } catch (error) {
     console.error('Error transferring user:', error)
