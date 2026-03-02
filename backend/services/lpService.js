@@ -467,7 +467,8 @@ class LPService {
       close_price: trade.closePrice,
       pnl: trade.pnl || trade.realizedPnl || 0,
       closed_by: trade.closedBy || 'USER',
-      closed_at: trade.closedAt?.toISOString() || new Date().toISOString()
+      closed_at: trade.closedAt?.toISOString() || new Date().toISOString(),
+      contract_size: trade.contractSize || this.getContractSize(trade.symbol), // CRITICAL: Send actual contract size for P/L verification
     }
 
     console.log(`[LP Service] Close payload:`, JSON.stringify(closeData, null, 2))
@@ -506,6 +507,101 @@ class LPService {
     } catch (error) {
       console.error('[LP Service] ✗ Error closing trade on Corecen:', error.message)
       console.log(`[LP Service] ==========================================`)
+      return { success: false, error: error.message }
+    }
+  }
+
+  // Remove A-Book user and close all their trades in LP
+  // Called when admin deletes a user or transfers from A-Book to B-Book
+  async removeABookUser(user) {
+    const config = this.getCorecenConfig()
+    
+    if (!config.apiKey || !config.apiSecret) {
+      console.log('[LP Service] Corecen API credentials not configured, skipping user removal')
+      return { success: false, message: 'LP credentials not configured' }
+    }
+
+    const timestamp = Date.now().toString()
+    const method = 'POST'
+    const path = '/api/v1/broker-api/users/remove'
+    
+    const payload = {
+      external_user_id: user._id.toString(),
+      user_email: user.email || '',
+      source_platform: 'VEDIEX',
+      timestamp: new Date().toISOString(),
+    }
+
+    const body = JSON.stringify(payload)
+    const signature = this.generateCorecenSignature(timestamp, method, path, body)
+
+    try {
+      const response = await fetch(`${config.apiUrl}${path}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': config.apiKey,
+          'X-Timestamp': timestamp,
+          'X-Signature': signature
+        },
+        body
+      })
+
+      const data = await response.json()
+      
+      if (response.ok) {
+        console.log(`[LP Service] User ${user.email} removed from Corecen`)
+        return { success: true, data }
+      } else {
+        console.error(`[LP Service] Failed to remove user from Corecen:`, data)
+        return { success: false, error: data.error?.message || 'User removal failed' }
+      }
+    } catch (error) {
+      console.error('[LP Service] Error removing user from Corecen:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  // Close all open A-Book trades for a user in LP
+  // Called before deleting user or trades locally
+  async closeAllUserTrades(userId) {
+    try {
+      // Find all open A-Book trades for this user
+      const Trade = (await import('../models/Trade.js')).default
+      const openTrades = await Trade.find({ 
+        userId, 
+        status: 'OPEN', 
+        bookType: 'A' 
+      })
+
+      console.log(`[LP Service] Found ${openTrades.length} open A-Book trades for user ${userId}`)
+
+      const results = []
+      for (const trade of openTrades) {
+        // Close trade at current market price (we'll use 0 for now, LP will handle)
+        trade.status = 'CLOSED'
+        trade.closedBy = 'ADMIN'
+        trade.closedAt = new Date()
+        trade.realizedPnl = 0 // LP will calculate actual P/L
+        
+        const result = await this.closeTradeOnCorecen(trade)
+        results.push({ tradeId: trade.tradeId, result })
+        
+        // Update local trade status
+        await trade.save()
+      }
+
+      const successCount = results.filter(r => r.result.success).length
+      console.log(`[LP Service] Closed ${successCount}/${openTrades.length} trades in LP`)
+
+      return { 
+        success: true, 
+        total: openTrades.length, 
+        closed: successCount,
+        results 
+      }
+    } catch (error) {
+      console.error(`[LP Service] Error closing user trades: ${error.message}`)
       return { success: false, error: error.message }
     }
   }
