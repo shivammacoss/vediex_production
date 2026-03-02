@@ -463,25 +463,34 @@ class IBEngine {
     const user = await User.findById(ibUserId)
     if (!user || !user.isIB) throw new Error('IB not found')
 
-    const wallet = await IBWallet.getOrCreateWallet(ibUserId)
+    const ibWallet = await IBWallet.getOrCreateWallet(ibUserId)
     
-    if (amount > wallet.balance) {
+    if (amount > ibWallet.balance) {
       throw new Error('Insufficient IB wallet balance')
     }
 
+    // Import Wallet model
+    const Wallet = (await import('../models/Wallet.js')).default
+    
+    // Get or create user's main wallet
+    let mainWallet = await Wallet.findOne({ userId: ibUserId })
+    if (!mainWallet) {
+      mainWallet = await Wallet.create({ userId: ibUserId, balance: 0 })
+    }
+
     // Deduct from IB wallet
-    await wallet.requestWithdrawal(amount)
+    await ibWallet.requestWithdrawal(amount)
     
     // Add to user's main wallet balance
-    user.walletBalance = (user.walletBalance || 0) + amount
-    await user.save()
+    mainWallet.balance = (mainWallet.balance || 0) + amount
+    await mainWallet.save()
 
     // Complete the withdrawal
-    await wallet.completeWithdrawal(amount)
+    await ibWallet.completeWithdrawal(amount)
 
     return {
-      ibWalletBalance: wallet.balance,
-      mainWalletBalance: user.walletBalance,
+      ibWalletBalance: ibWallet.balance,
+      mainWalletBalance: mainWallet.balance,
       withdrawnAmount: amount
     }
   }
