@@ -145,6 +145,7 @@ class IBEngine {
     while (parentId && level <= maxLevels) {
       const parentIB = await User.findById(parentId)
         .populate('ibPlanId')
+        .populate('ibLevelId')
       
       if (!parentIB || !parentIB.isIB || parentIB.ibStatus !== 'ACTIVE') {
         break
@@ -202,31 +203,46 @@ class IBEngine {
           continue
         }
 
-        // Get rate for this level - prioritize levels array (IBPlanNew.js format)
+        // Get rate for this level - PRIORITY: Use IBLevel (admin-set rates) over IBPlan defaults
         let rate = 0
         let rateSource = 'none'
         
-        // First check levels array (IBPlanNew.js format - this is the primary format)
-        if (plan.levels && plan.levels.length > 0) {
-          const levelConfig = plan.levels.find(l => l.level === level)
-          rate = levelConfig ? levelConfig.rate : 0
-          rateSource = 'levels array'
-        } 
-        // Fallback to levelCommissions object (old IBPlan.js format)
-        else if (plan.levelCommissions && plan.levelCommissions[`level${level}`]) {
-          rate = plan.levelCommissions[`level${level}`]
-          rateSource = 'levelCommissions'
-        } 
-        // Last resort: use getRateForLevel method
-        else if (plan.getRateForLevel) {
-          rate = plan.getRateForLevel(level)
-          rateSource = 'getRateForLevel method'
+        // PRIORITY 1: Use IBLevel commission rates (admin-configurable per level)
+        if (ibUser.ibLevelId) {
+          if (level === 1) {
+            // Direct referral - use the IB's own commission rate from IBLevel
+            rate = ibUser.ibLevelId.commissionRate || 0
+            rateSource = 'ibLevelId.commissionRate'
+          } else if (ibUser.ibLevelId.downlineCommission) {
+            // Downline levels (2-5) - use downlineCommission from IBLevel
+            rate = ibUser.ibLevelId.downlineCommission[`level${level}`] || 0
+            rateSource = 'ibLevelId.downlineCommission'
+          }
+        }
+        
+        // FALLBACK: Use IBPlan if IBLevel rate is not set (for backwards compatibility)
+        if (rate <= 0 && plan) {
+          if (plan.levels && plan.levels.length > 0) {
+            const levelConfig = plan.levels.find(l => l.level === level)
+            rate = levelConfig ? levelConfig.rate : 0
+            rateSource = 'plan.levels array (fallback)'
+          } else if (plan.levelCommissions && plan.levelCommissions[`level${level}`]) {
+            rate = plan.levelCommissions[`level${level}`]
+            rateSource = 'plan.levelCommissions (fallback)'
+          } else if (plan.getRateForLevel) {
+            rate = plan.getRateForLevel(level)
+            rateSource = 'plan.getRateForLevel (fallback)'
+          }
         }
         
         console.log(`[IB_COMMISSION_DEBUG] ========================================`)
         console.log(`[IB_COMMISSION_DEBUG] Trade ID: ${trade.tradeId || trade._id}`)
         console.log(`[IB_COMMISSION_DEBUG] IB: ${ibUser.firstName} (${ibUser._id})`)
         console.log(`[IB_COMMISSION_DEBUG] Level: ${level}`)
+        console.log(`[IB_COMMISSION_DEBUG] IBLevel ID: ${ibUser.ibLevelId?._id || 'none'}`)
+        console.log(`[IB_COMMISSION_DEBUG] IBLevel Name: ${ibUser.ibLevelId?.name || 'none'}`)
+        console.log(`[IB_COMMISSION_DEBUG] IBLevel CommissionRate: ${ibUser.ibLevelId?.commissionRate || 'none'}`)
+        console.log(`[IB_COMMISSION_DEBUG] IBLevel DownlineCommission:`, JSON.stringify(ibUser.ibLevelId?.downlineCommission || {}))
         console.log(`[IB_COMMISSION_DEBUG] Plan ID: ${plan._id}`)
         console.log(`[IB_COMMISSION_DEBUG] Plan Name: ${plan.name}`)
         console.log(`[IB_COMMISSION_DEBUG] Commission Type: ${plan.commissionType}`)
