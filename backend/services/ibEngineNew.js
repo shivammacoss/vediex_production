@@ -56,6 +56,15 @@ class IBEngine {
     user.ibStatus = 'PENDING'
     user.referralCode = referralCode
     
+    // Assign starter IBLevel (order 1) if not already set
+    if (!user.ibLevelId) {
+      const starterLevel = await IBLevel.getLevelByOrder(1)
+      if (starterLevel) {
+        user.ibLevelId = starterLevel._id
+        user.ibLevelOrder = starterLevel.order
+      }
+    }
+    
     // If user was referred by an IB, set parent and level
     if (user.referredBy) {
       const parentIB = await User.findOne({ 
@@ -94,6 +103,15 @@ class IBEngine {
     } else {
       const defaultPlan = await IBPlan.getDefaultPlan()
       user.ibPlanId = defaultPlan._id
+    }
+
+    // Assign starter IBLevel (order 1) if not already set
+    if (!user.ibLevelId) {
+      const starterLevel = await IBLevel.getLevelByOrder(1)
+      if (starterLevel) {
+        user.ibLevelId = starterLevel._id
+        user.ibLevelOrder = starterLevel.order
+      }
     }
 
     await user.save()
@@ -207,15 +225,22 @@ class IBEngine {
         let rate = 0
         let rateSource = 'none'
         
+        // If ibLevelId is not set, fetch the starter level for this IB (backwards compatibility fix)
+        let ibLevel = ibUser.ibLevelId
+        if (!ibLevel) {
+          ibLevel = await IBLevel.getLevelByOrder(ibUser.ibLevelOrder || 1)
+          console.log(`[IB_COMMISSION_DEBUG] ibLevelId was null, fetched level by order: ${ibLevel?.name || 'none'}`)
+        }
+        
         // PRIORITY 1: Use IBLevel commission rates (admin-configurable per level)
-        if (ibUser.ibLevelId) {
+        if (ibLevel) {
           if (level === 1) {
             // Direct referral - use the IB's own commission rate from IBLevel
-            rate = ibUser.ibLevelId.commissionRate || 0
+            rate = ibLevel.commissionRate || 0
             rateSource = 'ibLevelId.commissionRate'
-          } else if (ibUser.ibLevelId.downlineCommission) {
+          } else if (ibLevel.downlineCommission) {
             // Downline levels (2-5) - use downlineCommission from IBLevel
-            rate = ibUser.ibLevelId.downlineCommission[`level${level}`] || 0
+            rate = ibLevel.downlineCommission[`level${level}`] || 0
             rateSource = 'ibLevelId.downlineCommission'
           }
         }
@@ -239,10 +264,10 @@ class IBEngine {
         console.log(`[IB_COMMISSION_DEBUG] Trade ID: ${trade.tradeId || trade._id}`)
         console.log(`[IB_COMMISSION_DEBUG] IB: ${ibUser.firstName} (${ibUser._id})`)
         console.log(`[IB_COMMISSION_DEBUG] Level: ${level}`)
-        console.log(`[IB_COMMISSION_DEBUG] IBLevel ID: ${ibUser.ibLevelId?._id || 'none'}`)
-        console.log(`[IB_COMMISSION_DEBUG] IBLevel Name: ${ibUser.ibLevelId?.name || 'none'}`)
-        console.log(`[IB_COMMISSION_DEBUG] IBLevel CommissionRate: ${ibUser.ibLevelId?.commissionRate || 'none'}`)
-        console.log(`[IB_COMMISSION_DEBUG] IBLevel DownlineCommission:`, JSON.stringify(ibUser.ibLevelId?.downlineCommission || {}))
+        console.log(`[IB_COMMISSION_DEBUG] IBLevel ID: ${ibLevel?._id || 'none'}`)
+        console.log(`[IB_COMMISSION_DEBUG] IBLevel Name: ${ibLevel?.name || 'none'}`)
+        console.log(`[IB_COMMISSION_DEBUG] IBLevel CommissionRate: ${ibLevel?.commissionRate || 'none'}`)
+        console.log(`[IB_COMMISSION_DEBUG] IBLevel DownlineCommission:`, JSON.stringify(ibLevel?.downlineCommission || {}))
         console.log(`[IB_COMMISSION_DEBUG] Plan ID: ${plan._id}`)
         console.log(`[IB_COMMISSION_DEBUG] Plan Name: ${plan.name}`)
         console.log(`[IB_COMMISSION_DEBUG] Commission Type: ${plan.commissionType}`)
