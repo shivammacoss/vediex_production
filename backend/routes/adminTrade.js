@@ -262,7 +262,13 @@ router.post('/close/:tradeId', async (req, res) => {
     const rawPnl = trade.side === 'BUY'
       ? (finalClosePrice - trade.openPrice) * trade.quantity * trade.contractSize
       : (trade.openPrice - finalClosePrice) * trade.quantity * trade.contractSize
-    const realizedPnl = rawPnl - (trade.swap || 0)
+    const openCommission = trade.commission || 0
+    
+    // realizedPnl for balance update (commission already deducted on open)
+    const realizedPnlForBalance = rawPnl - (trade.swap || 0)
+    
+    // realizedPnl for display (includes all costs)
+    const realizedPnl = rawPnl - openCommission - (trade.swap || 0)
 
     // Update trade
     trade.closePrice = finalClosePrice
@@ -284,7 +290,7 @@ router.post('/close/:tradeId', async (req, res) => {
     }
     
     if (account) {
-      account.balance += realizedPnl
+      account.balance += realizedPnlForBalance
       if (account.balance < 0) account.balance = 0
       await account.save()
     }

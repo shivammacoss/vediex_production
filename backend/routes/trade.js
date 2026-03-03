@@ -280,8 +280,14 @@ router.post('/close', async (req, res) => {
         }
       }
       
-      // Calculate final PnL (subtract swap and close commission)
-      const pnl = rawPnl - (tradeToClose.swap || 0) - closeCommission
+      // Calculate final PnL
+      const openCommission = tradeToClose.commission || 0
+      
+      // pnlForBalance: for balance update (commission already deducted on open)
+      const pnlForBalance = rawPnl - (tradeToClose.swap || 0) - closeCommission
+      
+      // pnl: for display (includes all costs)
+      const pnl = rawPnl - openCommission - (tradeToClose.swap || 0) - closeCommission
       
       // Update trade
       tradeToClose.status = 'CLOSED'
@@ -291,8 +297,8 @@ router.post('/close', async (req, res) => {
       tradeToClose.closeReason = 'USER'
       await tradeToClose.save()
       
-      // Update challenge account
-      await propTradingEngine.onTradeClosed(challengeAccount._id, tradeToClose, pnl)
+      // Update challenge account (use pnlForBalance to avoid double-counting commission)
+      await propTradingEngine.onTradeClosed(challengeAccount._id, tradeToClose, pnlForBalance)
       
       return res.json({
         success: true,

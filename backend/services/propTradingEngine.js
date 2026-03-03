@@ -877,9 +877,16 @@ class PropTradingEngine {
         console.log(`Challenge trade ${trade.tradeId} ${closeReason} triggered: ${trade.side} ${trade.symbol} at ${closePrice}`)
         
         // Calculate PnL
-        const pnl = trade.side === 'BUY'
+        const rawPnl = trade.side === 'BUY'
           ? (closePrice - trade.openPrice) * trade.quantity * trade.contractSize
           : (trade.openPrice - closePrice) * trade.quantity * trade.contractSize
+        const openCommission = trade.commission || 0
+        
+        // pnlForBalance: for balance update (commission already deducted on open)
+        const pnlForBalance = rawPnl - (trade.swap || 0)
+        
+        // pnl: for display (includes all costs)
+        const pnl = rawPnl - openCommission - (trade.swap || 0)
 
         // Update trade
         trade.status = 'CLOSED'
@@ -889,8 +896,8 @@ class PropTradingEngine {
         trade.closedBy = closeReason
         await trade.save()
 
-        // Update challenge account
-        await this.onTradeClosed(trade.tradingAccountId, trade, pnl)
+        // Update challenge account (use pnlForBalance to avoid double-counting commission)
+        await this.onTradeClosed(trade.tradingAccountId, trade, pnlForBalance)
 
         closedTrades.push({ trade, reason: closeReason, pnl })
         console.log(`Challenge trade closed with PnL: $${pnl.toFixed(2)}`)
