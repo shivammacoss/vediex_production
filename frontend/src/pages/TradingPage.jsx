@@ -1505,10 +1505,13 @@ const TradingPage = () => {
                       <div className={`px-1.5 py-0.5 rounded text-[10px] font-medium min-w-[28px] text-center mx-2 ${isDarkMode ? 'bg-[#2a2a2a] text-cyan-400' : 'bg-blue-100 text-blue-600'}`}>
                         {/* Show admin-set spread if available, otherwise show market spread */}
                         {adminSpreads[inst.symbol]?.spread > 0 ? (
-                          // Convert admin spread to pips for display
-                          inst.symbol.includes('JPY') ? (adminSpreads[inst.symbol].spread * 100).toFixed(1) :
-                          inst.bid > 100 ? adminSpreads[inst.symbol].spread.toFixed(2) :
-                          (adminSpreads[inst.symbol].spread * 10000).toFixed(1)
+                          // Admin spread is in pips/cents - display as-is for pips display
+                          // For Metals (bid > 100): spread is in cents, multiply by 0.01 to get price, then show cents
+                          // For JPY pairs: spread is in pips (0.01), multiply by 100 for display
+                          // For other Forex: spread is in pips (0.0001), multiply by 10000 for display
+                          inst.symbol.includes('JPY') ? adminSpreads[inst.symbol].spread.toFixed(1) :
+                          inst.bid > 100 ? (adminSpreads[inst.symbol].spread * 0.01).toFixed(2) :
+                          adminSpreads[inst.symbol].spread.toFixed(1)
                         ) : inst.spread > 0 ? (
                           // Convert market spread to pips
                           inst.symbol.includes('JPY') ? (inst.spread * 100).toFixed(1) :
