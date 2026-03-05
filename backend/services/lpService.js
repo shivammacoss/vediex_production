@@ -562,6 +562,58 @@ class LPService {
     }
   }
 
+  // Get Corecen LP account balance and margin info
+  async getCorecenAccountInfo() {
+    const config = this.getCorecenConfig()
+    
+    if (!config.apiKey || !config.apiSecret) {
+      return { success: false, error: 'LP credentials not configured' }
+    }
+
+    const timestamp = Date.now().toString()
+    const method = 'GET'
+    const path = '/api/v1/broker-api/account'
+    
+    const signature = this.generateCorecenSignature(timestamp, method, path, '')
+
+    try {
+      const response = await fetch(`${config.apiUrl}${path}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': config.apiKey,
+          'X-Timestamp': timestamp,
+          'X-Signature': signature
+        }
+      })
+
+      const data = await response.json()
+      
+      if (response.ok) {
+        console.log(`[LP Service] Corecen account info fetched successfully`)
+        return { 
+          success: true, 
+          data: {
+            balance: data.balance || data.available_balance || 0,
+            equity: data.equity || data.balance || 0,
+            margin: data.margin || data.used_margin || 0,
+            freeMargin: data.free_margin || data.available_margin || 0,
+            marginLevel: data.margin_level || 0,
+            openPositions: data.open_positions || data.positions_count || 0,
+            currency: data.currency || 'USD',
+            raw: data
+          }
+        }
+      } else {
+        console.error(`[LP Service] Failed to fetch Corecen account info:`, data)
+        return { success: false, error: data.error?.message || data.message || 'Failed to fetch account info' }
+      }
+    } catch (error) {
+      console.error('[LP Service] Error fetching Corecen account info:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
   // Close all open A-Book trades for a user in LP
   // Called before deleting user or trades locally
   async closeAllUserTrades(userId) {

@@ -951,4 +951,30 @@ router.post('/test-lp-connection', async (req, res) => {
   }
 })
 
+// GET /admin/lp/account - Get Corecen LP account balance and margin info
+router.get('/lp/account', verifySuperAdmin, async (req, res) => {
+  try {
+    const result = await lpService.getCorecenAccountInfo()
+    
+    if (result.success) {
+      res.json({
+        success: true,
+        account: result.data,
+        message: 'LP account info fetched successfully'
+      })
+    } else {
+      res.json({
+        success: false,
+        message: result.error || 'Failed to fetch LP account info'
+      })
+    }
+  } catch (error) {
+    console.error('Error fetching LP account info:', error)
+    res.status(500).json({
+      success: false,
+      message: error.message
+    })
+  }
+})
+
 export default router

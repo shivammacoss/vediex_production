@@ -45,11 +45,16 @@ const AdminBookManagement = () => {
   const [connectionMessage, setConnectionMessage] = useState('')
   const [lpConnected, setLpConnected] = useState(false)
   const [checkingLpStatus, setCheckingLpStatus] = useState(true)
+  
+  // LP Account Info
+  const [lpAccountInfo, setLpAccountInfo] = useState(null)
+  const [loadingLpAccount, setLoadingLpAccount] = useState(false)
 
   useEffect(() => {
     fetchUsers()
     fetchLpSettings()
     checkLpConnectionStatus()
+    fetchLpAccountInfo()
   }, [filterBook])
 
   // Check LP connection status on mount and periodically
@@ -64,6 +69,27 @@ const AdminBookManagement = () => {
       setLpConnected(false)
     }
     setCheckingLpStatus(false)
+  }
+
+  // Fetch LP account balance and margin info
+  const fetchLpAccountInfo = async () => {
+    setLoadingLpAccount(true)
+    try {
+      const adminId = localStorage.getItem('adminId')
+      const res = await fetch(`${API_URL}/book/lp/account`, {
+        headers: { 'x-admin-id': adminId }
+      })
+      const data = await res.json()
+      if (data.success) {
+        setLpAccountInfo(data.account)
+      } else {
+        setLpAccountInfo(null)
+      }
+    } catch (error) {
+      console.error('Error fetching LP account info:', error)
+      setLpAccountInfo(null)
+    }
+    setLoadingLpAccount(false)
   }
 
   // Fetch LP settings on mount
@@ -460,6 +486,68 @@ const AdminBookManagement = () => {
               A-Book trades will be automatically routed to the LP using these credentials. 
               Make sure to test the connection before saving.
             </p>
+          </div>
+
+          {/* LP Account Info */}
+          <div className="mt-4 p-4 bg-dark-700 rounded-lg border border-gray-700">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-white font-semibold flex items-center gap-2">
+                <Info size={16} className="text-purple-400" />
+                Corecen LP Account Status
+              </h4>
+              <button
+                onClick={fetchLpAccountInfo}
+                disabled={loadingLpAccount}
+                className="text-purple-400 hover:text-purple-300 text-sm flex items-center gap-1"
+              >
+                <RefreshCw size={14} className={loadingLpAccount ? 'animate-spin' : ''} />
+                Refresh
+              </button>
+            </div>
+            
+            {loadingLpAccount ? (
+              <div className="text-gray-500 text-sm">Loading LP account info...</div>
+            ) : lpAccountInfo ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-dark-800 p-3 rounded-lg">
+                  <p className="text-gray-500 text-xs mb-1">Balance</p>
+                  <p className={`text-lg font-bold ${lpAccountInfo.balance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    ${lpAccountInfo.balance?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                  </p>
+                </div>
+                <div className="bg-dark-800 p-3 rounded-lg">
+                  <p className="text-gray-500 text-xs mb-1">Equity</p>
+                  <p className={`text-lg font-bold ${lpAccountInfo.equity >= 0 ? 'text-white' : 'text-red-400'}`}>
+                    ${lpAccountInfo.equity?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                  </p>
+                </div>
+                <div className="bg-dark-800 p-3 rounded-lg">
+                  <p className="text-gray-500 text-xs mb-1">Free Margin</p>
+                  <p className={`text-lg font-bold ${lpAccountInfo.freeMargin >= 0 ? 'text-blue-400' : 'text-red-400'}`}>
+                    ${lpAccountInfo.freeMargin?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                  </p>
+                </div>
+                <div className="bg-dark-800 p-3 rounded-lg">
+                  <p className="text-gray-500 text-xs mb-1">Open Positions</p>
+                  <p className="text-lg font-bold text-yellow-400">
+                    {lpAccountInfo.openPositions || 0}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="text-yellow-400 text-sm bg-yellow-500/10 p-3 rounded-lg border border-yellow-500/30">
+                ⚠️ Unable to fetch LP account info. Check your API credentials and connection.
+              </div>
+            )}
+            
+            {lpAccountInfo && lpAccountInfo.freeMargin < 0 && (
+              <div className="mt-3 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+                <p className="text-red-400 text-sm font-semibold">⚠️ INSUFFICIENT MARGIN</p>
+                <p className="text-red-300 text-xs mt-1">
+                  Your Corecen LP account has negative free margin. A-Book trades cannot be pushed until you deposit funds into your Corecen broker account.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}
