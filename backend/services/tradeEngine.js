@@ -445,6 +445,7 @@ class TradeEngine {
 
     // Update account balance with proper credit handling
     const account = await TradingAccount.findById(trade.tradingAccountId)
+    const balanceBefore = account.balance
     
     if (realizedPnlForBalance >= 0) {
       // Profit: Add to balance only (credit stays the same)
@@ -469,6 +470,7 @@ class TradeEngine {
     }
     
     await account.save()
+    console.log(`[TradeClose] Balance update: ${balanceBefore.toFixed(2)} -> ${account.balance.toFixed(2)} (change: ${(account.balance - balanceBefore).toFixed(2)}, pnlForBalance: ${realizedPnlForBalance.toFixed(2)})`)
 
     // Log admin action if applicable
     if (adminId) {
