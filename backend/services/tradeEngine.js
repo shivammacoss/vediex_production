@@ -431,6 +431,7 @@ class TradeEngine {
     // Update trade
     trade.closePrice = closePrice
     trade.realizedPnl = realizedPnl
+    trade.rawPnl = rawPnl // Store raw P/L for LP sync (without commission)
     trade.status = 'CLOSED'
     trade.closedBy = closedBy
     trade.closedAt = new Date()

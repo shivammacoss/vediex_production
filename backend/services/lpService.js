@@ -462,13 +462,28 @@ class LPService {
     const method = 'POST'
     const path = '/api/v1/broker-api/trades/close'
     
+    // Calculate raw P/L (price movement only, NO commission) so broker keeps commission as profit
+    const contractSize = trade.contractSize || this.getContractSize(trade.symbol)
+    let rawPnl = 0
+    if (trade.rawPnl !== undefined) {
+      rawPnl = trade.rawPnl
+    } else {
+      // Calculate raw P/L from price movement
+      const priceDiff = trade.side === 'BUY' 
+        ? trade.closePrice - trade.openPrice 
+        : trade.openPrice - trade.closePrice
+      rawPnl = priceDiff * trade.quantity * contractSize
+    }
+    
+    console.log(`[LP Service] Sending RAW P/L to Corecen: ${rawPnl.toFixed(2)} (commission NOT included - broker keeps it)`)
+    
     const closeData = {
       external_trade_id: trade.tradeId || trade._id.toString(),
       close_price: trade.closePrice,
-      pnl: trade.pnl || trade.realizedPnl || 0,
+      pnl: rawPnl, // Send raw P/L without commission so broker keeps commission as profit
       closed_by: trade.closedBy || 'USER',
       closed_at: trade.closedAt?.toISOString() || new Date().toISOString(),
-      contract_size: trade.contractSize || this.getContractSize(trade.symbol), // CRITICAL: Send actual contract size for P/L verification
+      contract_size: contractSize,
     }
 
     console.log(`[LP Service] Close payload:`, JSON.stringify(closeData, null, 2))
