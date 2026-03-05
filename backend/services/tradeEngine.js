@@ -87,6 +87,36 @@ class TradeEngine {
     }
   }
 
+  // Calculate spread cost in USD
+  // Spread is the difference between execution price and raw market price
+  // SpreadCost = spread (in price terms) * quantity * contractSize
+  calculateSpreadCost(side, bid, ask, spreadValue, spreadType, quantity, contractSize, symbol = '') {
+    let spreadInPrice = 0
+    
+    if (spreadType === 'PERCENTAGE') {
+      spreadInPrice = (ask - bid) * (spreadValue / 100)
+    } else {
+      // FIXED spread - value is in PIPS, need to convert to price
+      const isJPYPair = symbol.includes('JPY')
+      const isMetal = ['XAUUSD', 'XAGUSD'].includes(symbol)
+      const isCrypto = ['BTCUSD', 'ETHUSD', 'LTCUSD', 'XRPUSD', 'BCHUSD'].includes(symbol)
+      
+      if (isCrypto) {
+        spreadInPrice = spreadValue
+      } else if (isMetal) {
+        spreadInPrice = spreadValue * 0.01
+      } else if (isJPYPair) {
+        spreadInPrice = spreadValue * 0.01
+      } else {
+        spreadInPrice = spreadValue * 0.0001
+      }
+    }
+    
+    // Spread cost = spread in price * quantity * contract size
+    const spreadCost = spreadInPrice * quantity * contractSize
+    return Math.round(spreadCost * 100) / 100 // Round to 2 decimal places
+  }
+
   // Calculate PnL for a trade
   calculatePnl(side, openPrice, currentPrice, quantity, contractSize = this.CONTRACT_SIZE) {
     if (side === 'BUY') {
@@ -97,10 +127,13 @@ class TradeEngine {
   }
 
   // Calculate floating PnL including charges
+  // Note: spread and commission are already deducted from balance when trade opens
+  // So floating PnL should NOT subtract them again (they're already accounted for)
+  // Only swap is accumulated over time and needs to be subtracted
   calculateFloatingPnl(trade, currentBid, currentAsk) {
     const currentPrice = trade.side === 'BUY' ? currentBid : currentAsk
     const rawPnl = this.calculatePnl(trade.side, trade.openPrice, currentPrice, trade.quantity, trade.contractSize)
-    return rawPnl - trade.commission - trade.swap
+    return rawPnl - trade.swap
   }
 
   // Get account financial summary (real-time calculated values)
@@ -242,18 +275,22 @@ class TradeEngine {
     // Get charges for this trade
     const charges = await Charges.getChargesForTrade(userId, symbol, segment, account.accountTypeId?._id)
     
-    // Fallback to AccountType's spread/commission if no charges found
+    // Log AccountType info for debugging
+    console.log(`[Trade] AccountType: ${account.accountTypeId?.name || 'None'}, minSpread: ${account.accountTypeId?.minSpread}, commission: ${account.accountTypeId?.commission}`)
+    
+    // Fallback to AccountType's spread/commission if no charges found in Charges collection
     if (charges.spreadValue === 0 && account.accountTypeId?.minSpread > 0) {
       charges.spreadValue = account.accountTypeId.minSpread
-      console.log(`Using AccountType minSpread fallback: ${charges.spreadValue}`)
+      charges.spreadType = 'FIXED' // AccountType spread is always in pips (FIXED)
+      console.log(`[Trade] Using AccountType minSpread fallback: ${charges.spreadValue} pips`)
     }
     if (charges.commissionValue === 0 && account.accountTypeId?.commission > 0) {
       charges.commissionValue = account.accountTypeId.commission
       charges.commissionType = 'PER_LOT'
-      console.log(`Using AccountType commission fallback: ${charges.commissionValue}`)
+      console.log(`[Trade] Using AccountType commission fallback: ${charges.commissionValue}`)
     }
     
-    console.log(`Charges retrieved: spread=${charges.spreadValue}, commission=${charges.commissionValue}, commissionType=${charges.commissionType}`)
+    console.log(`[Trade] Final charges: spread=${charges.spreadValue} (${charges.spreadType}), commission=${charges.commissionValue} (${charges.commissionType})`)
 
     // Calculate execution price with spread
     const openPrice = this.calculateExecutionPrice(side, bid, ask, charges.spreadValue, charges.spreadType, symbol)
@@ -296,6 +333,13 @@ class TradeEngine {
     }
     console.log(`Commission calculated: $${commission} (side=${side}, commissionOnBuy=${charges.commissionOnBuy}, commissionOnSell=${charges.commissionOnSell})`)
 
+    // Calculate spread cost in USD (for earnings tracking)
+    let spreadCost = 0
+    if (charges.spreadValue > 0) {
+      spreadCost = this.calculateSpreadCost(side, bid, ask, charges.spreadValue, charges.spreadType, quantity, contractSize, symbol)
+    }
+    console.log(`Spread cost calculated: $${spreadCost} (spreadValue=${charges.spreadValue} pips)`)
+
     // Validate SL/TP values if provided
     if (sl !== null || tp !== null) {
       const slTpErrors = this.validateSlTp(side, openPrice, sl, tp)
@@ -323,7 +367,7 @@ class TradeEngine {
       marginUsed: marginRequired,
       leverage: parseInt(leverage.toString().replace('1:', '')) || 100,
       contractSize: contractSize,
-      spread: charges.spreadValue,
+      spread: spreadCost, // Store spread cost in USD (not pips)
       commission,
       swap: 0,
       floatingPnl: 0,
@@ -331,11 +375,15 @@ class TradeEngine {
       pendingPrice: orderType !== 'MARKET' ? openPrice : null
     })
 
-    // Deduct commission from trading account balance when trade opens
-    if (orderType === 'MARKET' && commission > 0) {
-      account.balance -= commission
-      if (account.balance < 0) account.balance = 0
-      await account.save()
+    // Deduct commission AND spread cost from trading account balance when trade opens
+    if (orderType === 'MARKET') {
+      const totalCharges = commission + spreadCost
+      if (totalCharges > 0) {
+        account.balance -= totalCharges
+        if (account.balance < 0) account.balance = 0
+        await account.save()
+        console.log(`Deducted charges from balance: Commission=$${commission}, Spread=$${spreadCost}, Total=$${totalCharges}`)
+      }
     }
 
     return trade
@@ -365,18 +413,19 @@ class TradeEngine {
     }
     
     // Calculate final PnL
-    // Note: Open commission was already deducted from balance when trade opened
-    // So realizedPnlForBalance should NOT include open commission (to avoid double-counting)
-    // But for display, we show: rawPnl - openCommission - swap - closeCommission
+    // Note: Open commission and spread were already deducted from balance when trade opened
+    // So realizedPnlForBalance should NOT include them (to avoid double-counting)
+    // But for display, we show: rawPnl - spread - openCommission - swap - closeCommission
     const rawPnl = this.calculatePnl(trade.side, trade.openPrice, closePrice, trade.quantity, trade.contractSize)
     const openCommission = trade.commission || 0
+    const spreadCost = trade.spread || 0 // Now stored in USD
     
-    // realizedPnl for balance update (commission already deducted on open)
+    // realizedPnl for balance update (commission and spread already deducted on open)
     const realizedPnlForBalance = rawPnl - trade.swap - closeCommission
     
     // realizedPnl for display (includes all costs)
-    const realizedPnl = rawPnl - openCommission - trade.swap - closeCommission
-    console.log(`[TradeClose] rawPnl: ${rawPnl}, openCommission: ${openCommission}, swap: ${trade.swap}, closeCommission: ${closeCommission}, realizedPnl: ${realizedPnl}, realizedPnlForBalance: ${realizedPnlForBalance}`)
+    const realizedPnl = rawPnl - spreadCost - openCommission - trade.swap - closeCommission
+    console.log(`[TradeClose] rawPnl: ${rawPnl}, spread: ${spreadCost}, openCommission: ${openCommission}, swap: ${trade.swap}, closeCommission: ${closeCommission}, realizedPnl: ${realizedPnl}, realizedPnlForBalance: ${realizedPnlForBalance}`)
 
     // Update trade
     trade.closePrice = closePrice

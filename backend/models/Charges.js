@@ -171,8 +171,8 @@ chargesSchema.statics.getChargesForTrade = async function(userId, symbol, segmen
   applicableCharges = Object.values(chargesByLevel)
   console.log(`Found ${applicableCharges.length} applicable charges after merging`)
   
-  // Priority order for merging
-  const priorityOrder = { 'USER': 1, 'INSTRUMENT': 2, 'ACCOUNT_TYPE': 3, 'SEGMENT': 4, 'GLOBAL': 5 }
+  // Priority order for merging (USER > INSTRUMENT > SEGMENT > ACCOUNT_TYPE > GLOBAL)
+  const priorityOrder = { 'USER': 1, 'INSTRUMENT': 2, 'SEGMENT': 3, 'ACCOUNT_TYPE': 4, 'GLOBAL': 5 }
   
   // Sort by priority (most specific first)
   applicableCharges.sort((a, b) => priorityOrder[a.level] - priorityOrder[b.level])
@@ -214,7 +214,10 @@ chargesSchema.statics.getChargesForTrade = async function(userId, symbol, segmen
     }
   }
   
-  console.log(`Final charges: spread=${result.spreadValue}, commission=${result.commissionValue}, swapLong=${result.swapLong}, swapShort=${result.swapShort}`)
+  // Log which levels contributed to the final charges
+  const appliedLevels = applicableCharges.map(c => c.level).join(', ')
+  console.log(`[Charges] Applied levels: ${appliedLevels || 'NONE (using defaults)'}`)
+  console.log(`[Charges] Final: spread=${result.spreadValue} (${result.spreadType}), commission=${result.commissionValue} (${result.commissionType}), swapLong=${result.swapLong}, swapShort=${result.swapShort}`)
   
   return result
 }

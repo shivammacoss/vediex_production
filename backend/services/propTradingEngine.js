@@ -274,6 +274,32 @@ class PropTradingEngine {
     return 0
   }
 
+  // Calculate spread cost in USD
+  calculateSpreadCost(side, bid, ask, spreadValue, spreadType, quantity, contractSize, symbol = '') {
+    let spreadInPrice = 0
+    
+    if (spreadType === 'PERCENTAGE') {
+      spreadInPrice = (ask - bid) * (spreadValue / 100)
+    } else {
+      const isJPYPair = symbol.includes('JPY')
+      const isMetal = ['XAUUSD', 'XAGUSD'].includes(symbol)
+      const isCrypto = ['BTCUSD', 'ETHUSD', 'LTCUSD', 'XRPUSD', 'BCHUSD'].includes(symbol)
+      
+      if (isCrypto) {
+        spreadInPrice = spreadValue || 0
+      } else if (isMetal) {
+        spreadInPrice = (spreadValue || 0) * 0.01
+      } else if (isJPYPair) {
+        spreadInPrice = (spreadValue || 0) * 0.01
+      } else {
+        spreadInPrice = (spreadValue || 0) * 0.0001
+      }
+    }
+    
+    const spreadCost = spreadInPrice * quantity * contractSize
+    return Math.round(spreadCost * 100) / 100
+  }
+
   // Open a trade for challenge account
   async openChallengeTrade(userId, challengeAccountId, tradeParams) {
     const account = await ChallengeAccount.findById(challengeAccountId)
@@ -309,6 +335,12 @@ class PropTradingEngine {
       commission = this.calculateCommission(quantity, openPrice, charges.commissionType, charges.commissionValue, contractSize)
     }
 
+    // Calculate spread cost in USD
+    let spreadCost = 0
+    if (charges.spreadValue > 0) {
+      spreadCost = this.calculateSpreadCost(side, bid, ask, charges.spreadValue, charges.spreadType, quantity, contractSize, symbol)
+    }
+
     // Validate SL/TP values if provided
     if (sl !== null || tp !== null) {
       const slTpErrors = this.validateSlTp(side, openPrice, sl, tp)
@@ -337,7 +369,7 @@ class PropTradingEngine {
       marginUsed: marginRequired,
       contractSize,
       leverage: leverage,
-      spread: charges.spreadValue || 0,
+      spread: spreadCost, // Store spread cost in USD (not pips)
       status: 'OPEN',
       openedAt: new Date(),
       sl: sl || null,

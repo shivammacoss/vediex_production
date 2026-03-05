@@ -59,7 +59,7 @@ router.get('/summary', async (req, res) => {
           commission: today.totalCommission,
           spread: today.totalSpread,
           swap: today.totalSwap,
-          total: today.totalCommission + today.totalSwap,
+          total: today.totalCommission + today.totalSpread + today.totalSwap,
           trades: today.tradeCount,
           volume: today.totalVolume
         },
@@ -67,7 +67,7 @@ router.get('/summary', async (req, res) => {
           commission: thisWeek.totalCommission,
           spread: thisWeek.totalSpread,
           swap: thisWeek.totalSwap,
-          total: thisWeek.totalCommission + thisWeek.totalSwap,
+          total: thisWeek.totalCommission + thisWeek.totalSpread + thisWeek.totalSwap,
           trades: thisWeek.tradeCount,
           volume: thisWeek.totalVolume
         },
@@ -75,7 +75,7 @@ router.get('/summary', async (req, res) => {
           commission: thisMonth.totalCommission,
           spread: thisMonth.totalSpread,
           swap: thisMonth.totalSwap,
-          total: thisMonth.totalCommission + thisMonth.totalSwap,
+          total: thisMonth.totalCommission + thisMonth.totalSpread + thisMonth.totalSwap,
           trades: thisMonth.tradeCount,
           volume: thisMonth.totalVolume
         },
@@ -83,7 +83,7 @@ router.get('/summary', async (req, res) => {
           commission: thisYear.totalCommission,
           spread: thisYear.totalSpread,
           swap: thisYear.totalSwap,
-          total: thisYear.totalCommission + thisYear.totalSwap,
+          total: thisYear.totalCommission + thisYear.totalSpread + thisYear.totalSwap,
           trades: thisYear.tradeCount,
           volume: thisYear.totalVolume
         },
@@ -91,7 +91,7 @@ router.get('/summary', async (req, res) => {
           commission: allTime.totalCommission,
           spread: allTime.totalSpread,
           swap: allTime.totalSwap,
-          total: allTime.totalCommission + allTime.totalSwap,
+          total: allTime.totalCommission + allTime.totalSpread + allTime.totalSwap,
           trades: allTime.tradeCount,
           volume: allTime.totalVolume
         }
@@ -150,7 +150,7 @@ router.get('/daily', async (req, res) => {
       commission: day.commission,
       spread: day.spread,
       swap: day.swap,
-      total: day.commission + day.swap,
+      total: day.commission + day.spread + day.swap,
       trades: day.trades,
       volume: day.volume
     }))
@@ -208,12 +208,12 @@ router.get('/by-user', async (req, res) => {
       {
         $project: {
           userId: '$_id',
-          userName: '$user.name',
+          userName: '$user.firstName',
           userEmail: '$user.email',
           commission: 1,
           spread: 1,
           swap: 1,
-          total: { $add: ['$commission', '$swap'] },
+          total: { $add: ['$commission', '$spread', '$swap'] },
           trades: 1,
           volume: 1
         }
@@ -268,7 +268,7 @@ router.get('/by-symbol', async (req, res) => {
           commission: 1,
           spread: 1,
           swap: 1,
-          total: { $add: ['$commission', '$swap'] },
+          total: { $add: ['$commission', '$spread', '$swap'] },
           trades: 1,
           volume: 1
         }

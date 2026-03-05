@@ -93,10 +93,20 @@ const AdminForexCharges = () => {
         : `${API_URL}/charges`
       const method = editingCharge ? 'PUT' : 'POST'
 
+      // Determine the correct level based on selections (priority: USER > INSTRUMENT > SEGMENT > ACCOUNT_TYPE > GLOBAL)
+      let level = 'GLOBAL'
+      if (form.accountTypeId) level = 'ACCOUNT_TYPE'
+      if (form.segment) level = 'SEGMENT'
+      if (form.instrumentSymbol) level = 'INSTRUMENT'
+      if (form.userId) level = 'USER'
+
+      const payload = { ...form, level }
+      console.log('Saving charge with level:', level, payload)
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
+        body: JSON.stringify(payload)
       })
       const data = await res.json()
       if (data.success) {
