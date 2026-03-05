@@ -88,7 +88,8 @@ router.get('/', async (req, res) => {
     if (userId) query.userId = userId
 
     const charges = await Charges.find(query)
-      .populate('userId', 'name email mobile')
+      .populate('userId', 'firstName lastName email mobile')
+      .populate('accountTypeId', 'name')
       .sort({ level: 1, createdAt: -1 })
     res.json({ success: true, charges })
   } catch (error) {
