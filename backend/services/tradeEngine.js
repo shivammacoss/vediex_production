@@ -492,7 +492,7 @@ class TradeEngine {
     }
 
     // Close A-Book trade on Corecen LP
-    if (trade.bookType === 'A' && lpService.isConfigured()) {
+    if ((trade.bookType === 'A' || trade.bookType === 'A_BOOK') && lpService.isConfigured()) {
       try {
         const lpResult = await lpService.closeTradeOnCorecen(trade)
         if (lpResult.success) {

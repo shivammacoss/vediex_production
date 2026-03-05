@@ -466,7 +466,7 @@ router.post('/:id/reset-demo', async (req, res) => {
     // Close A-Book trades in LP first
     if (lpService.isConfigured()) {
       for (const trade of openTrades) {
-        if (trade.bookType === 'A') {
+        if (trade.bookType === 'A' || trade.bookType === 'A_BOOK') {
           try {
             trade.status = 'CLOSED'
             trade.closedBy = 'DEMO_RESET'
