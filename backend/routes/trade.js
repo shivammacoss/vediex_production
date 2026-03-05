@@ -193,6 +193,10 @@ router.post('/open', async (req, res) => {
         console.log(`[A-BOOK PUSH] Quantity: ${trade.quantity}, Price: ${trade.openPrice}`)
         console.log(`[A-BOOK PUSH] ========================================`)
         
+        // Set trade bookType to A so it syncs on close
+        trade.bookType = 'A'
+        await trade.save()
+        
         lpService.pushTradeToCorecen(trade, user).then(result => {
           console.log(`[A-BOOK PUSH] Result:`, JSON.stringify(result, null, 2))
         }).catch(err => {
