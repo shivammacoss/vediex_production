@@ -16,7 +16,7 @@ const CloseTradeModal = ({
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  // Calculate live P/L
+  // Calculate live P/L (includes charges - commission + swap)
   const calculatePnL = (lots = null) => {
     if (!trade || !currentPrice) return 0
     const quantity = lots || trade.quantity
@@ -24,13 +24,20 @@ const CloseTradeModal = ({
     const entryPrice = trade.openPrice
     const exitPrice = trade.side === 'BUY' ? currentPrice.bid : currentPrice.ask
     
-    let pnl = 0
+    let rawPnl = 0
     if (trade.side === 'BUY') {
-      pnl = (exitPrice - entryPrice) * quantity * contractSize
+      rawPnl = (exitPrice - entryPrice) * quantity * contractSize
     } else {
-      pnl = (entryPrice - exitPrice) * quantity * contractSize
+      rawPnl = (entryPrice - exitPrice) * quantity * contractSize
     }
-    return pnl
+    
+    // Include charges (commission + swap) to match other P/L displays
+    // For partial close, calculate proportional charges
+    const lotRatio = lots ? (lots / trade.quantity) : 1
+    const commission = (trade.commission || 0) * lotRatio
+    const swap = (trade.swap || 0) * lotRatio
+    
+    return rawPnl - commission - swap
   }
 
   const totalPnL = calculatePnL()
