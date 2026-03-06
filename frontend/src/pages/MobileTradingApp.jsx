@@ -10,6 +10,7 @@ import {
 import priceService from '../services/priceService'
 import priceStreamService from '../services/priceStream'
 import { API_URL } from '../config/api'
+import CloseTradeModal from '../components/CloseTradeModal'
 
 const MobileTradingApp = () => {
   const navigate = useNavigate()
@@ -58,6 +59,10 @@ const MobileTradingApp = () => {
   const [modifySL, setModifySL] = useState('')
   const [modifyTP, setModifyTP] = useState('')
   const [isModifying, setIsModifying] = useState(false)
+  
+  // Close trade modal states (for partial close)
+  const [showCloseModal, setShowCloseModal] = useState(false)
+  const [selectedTradeForClose, setSelectedTradeForClose] = useState(null)
   
   // iOS-style notification states
   const [notifications, setNotifications] = useState([])
@@ -529,6 +534,72 @@ const MobileTradingApp = () => {
       showNotification('Error executing order', 'error')
     }
     setIsExecuting(false)
+  }
+
+  // Open close modal (for partial close support)
+  const openCloseModal = (trade) => {
+    setSelectedTradeForClose(trade)
+    setShowCloseModal(true)
+  }
+
+  // Get current price for a trade
+  const getCurrentPriceForTrade = (trade) => {
+    if (!trade) return null
+    const prices = livePrices[trade.symbol]
+    if (!prices) return null
+    return {
+      bid: prices.bid,
+      ask: prices.ask
+    }
+  }
+
+  // Handle partial close
+  const handlePartialClose = async (trade, closeLot, currentPrice) => {
+    if (!trade || !currentPrice) throw new Error('Invalid trade or price data')
+    
+    const res = await fetch(`${API_URL}/trade/partial-close`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tradeId: trade._id,
+        closeLot: closeLot,
+        bid: currentPrice.bid,
+        ask: currentPrice.ask
+      })
+    })
+    const data = await res.json()
+    if (!data.success) {
+      throw new Error(data.message || 'Failed to partially close trade')
+    }
+    showNotification(`Closed ${closeLot} lots! P/L: $${data.realizedPnl?.toFixed(2) || '0.00'}`, data.realizedPnl >= 0 ? 'success' : 'error')
+    fetchOpenTrades()
+    fetchTradeHistory()
+    fetchAccountSummary()
+    return data
+  }
+
+  // Handle full close from modal
+  const handleFullClose = async (trade, currentPrice) => {
+    if (!trade || !currentPrice) throw new Error('Invalid trade or price data')
+    
+    const res = await fetch(`${API_URL}/trade/close`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tradeId: trade._id,
+        bid: currentPrice.bid,
+        ask: currentPrice.ask
+      })
+    })
+    const data = await res.json()
+    if (!data.success) {
+      throw new Error(data.message || 'Failed to close trade')
+    }
+    showNotification(`Trade closed! P/L: $${data.realizedPnl?.toFixed(2) || '0.00'}`, data.realizedPnl >= 0 ? 'success' : 'error')
+    fetchOpenTrades()
+    fetchTradeHistory()
+    fetchAccountSummary()
+    return data
   }
 
   const closeTrade = async (tradeId) => {
@@ -1227,7 +1298,7 @@ const MobileTradingApp = () => {
                             Modify SL/TP
                           </button>
                           <button
-                            onClick={(e) => { e.stopPropagation(); closeTrade(trade._id) }}
+                            onClick={(e) => { e.stopPropagation(); openCloseModal(trade) }}
                             className="flex-1 py-2.5 bg-red-500 text-white rounded-lg text-sm font-medium"
                           >
                             Close Trade
@@ -1965,6 +2036,16 @@ const MobileTradingApp = () => {
           </div>
         </div>
       )}
+
+      {/* Close Trade Modal with Partial Close */}
+      <CloseTradeModal
+        isOpen={showCloseModal}
+        onClose={() => setShowCloseModal(false)}
+        trade={selectedTradeForClose}
+        currentPrice={selectedTradeForClose ? getCurrentPriceForTrade(selectedTradeForClose) : null}
+        onPartialClose={handlePartialClose}
+        onFullClose={handleFullClose}
+      />
 
       {/* iOS-Style Notifications */}
       <div className="fixed top-0 left-0 right-0 z-[100] pointer-events-none">
