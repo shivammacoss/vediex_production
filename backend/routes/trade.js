@@ -353,14 +353,16 @@ router.post('/close', async (req, res) => {
       console.error('Error processing IB commission:', ibError)
     }
 
-    // Check if user is A-Book and close trade on Corecen LP
+    // Check if TRADE is A-Book (not user) and close on Corecen LP
+    // Only trades with bookType === 'A_BOOK' were pushed to Corecen
     try {
-      const user = await User.findById(result.trade.userId)
-      if (user && user.bookType === 'A') {
+      if (result.trade.bookType === 'A_BOOK' || result.trade.bookType === 'A') {
+        const user = await User.findById(result.trade.userId)
         console.log(`[A-BOOK CLOSE] ========================================`)
-        console.log(`[A-BOOK CLOSE] User: ${user.email}`)
+        console.log(`[A-BOOK CLOSE] User: ${user?.email || 'Unknown'}`)
         console.log(`[A-BOOK CLOSE] Trade ID (internal): ${result.trade._id}`)
         console.log(`[A-BOOK CLOSE] Trade ID (tradeId): ${result.trade.tradeId}`)
+        console.log(`[A-BOOK CLOSE] Trade bookType: ${result.trade.bookType}`)
         console.log(`[A-BOOK CLOSE] Close Price: ${result.trade.closePrice}`)
         console.log(`[A-BOOK CLOSE] PnL: ${result.trade.pnl || result.realizedPnl}`)
         console.log(`[A-BOOK CLOSE] ========================================`)
