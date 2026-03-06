@@ -934,9 +934,13 @@ router.post('/partial-close', async (req, res) => {
       rawPnl = (trade.openPrice - closePrice) * closeQuantity * trade.contractSize
     }
 
-    // Proportional swap for closed portion
-    const proportionalSwap = (trade.swap || 0) * (closeQuantity / trade.quantity)
-    const realizedPnl = rawPnl - proportionalSwap - closeCommission
+    // Proportional charges for closed portion
+    const lotRatio = closeQuantity / trade.quantity
+    const proportionalSwap = (trade.swap || 0) * lotRatio
+    const proportionalOpenCommission = (trade.commission || 0) * lotRatio
+    
+    // realizedPnl includes all charges (open commission + swap + close commission)
+    const realizedPnl = rawPnl - proportionalOpenCommission - proportionalSwap - closeCommission
 
     // Update trading account balance
     const account = await TradingAccount.findById(trade.tradingAccountId)
@@ -984,15 +988,16 @@ router.post('/partial-close', async (req, res) => {
       openPrice: trade.openPrice,
       closePrice: closePrice,
       realizedPnl: realizedPnl,
-      commission: closeCommission,
+      commission: proportionalOpenCommission + closeCommission, // Total commission (open + close)
       swap: proportionalSwap,
       closedBy: 'USER'
     })
 
-    // Update trade with remaining quantity and adjusted margin/swap
+    // Update trade with remaining quantity and adjusted margin/swap/commission
     trade.quantity = remainingQuantity
     trade.marginUsed = trade.marginUsed - releasedMargin
     trade.swap = (trade.swap || 0) - proportionalSwap
+    trade.commission = (trade.commission || 0) - proportionalOpenCommission
     await trade.save()
 
     console.log(`[PartialClose] Trade ${trade.tradeId}: Closed ${closeQuantity} lots, remaining ${remainingQuantity} lots, PnL: $${realizedPnl.toFixed(2)}`)
