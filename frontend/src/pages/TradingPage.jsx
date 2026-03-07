@@ -328,10 +328,11 @@ const TradingPage = () => {
         
         if (currentPrice && currentPrice > 0) {
           hasValidPrices = true
-          const pnl = trade.side === 'BUY'
+          const rawPnl = trade.side === 'BUY'
             ? (currentPrice - trade.openPrice) * trade.quantity * trade.contractSize
             : (trade.openPrice - currentPrice) * trade.quantity * trade.contractSize
-          // Show raw P/L without deducting charges (commission/swap shown separately)
+          // Include charges (commission + swap) in floating P/L
+          const pnl = rawPnl - (trade.commission || 0) - (trade.swap || 0)
           totalFloatingPnl += pnl
         }
         totalUsedMargin += trade.marginUsed || 0
@@ -1072,9 +1073,10 @@ const TradingPage = () => {
       const currentPrice = livePrice 
         ? (trade.side === 'BUY' ? livePrice.bid : livePrice.ask)
         : (trade.side === 'BUY' ? inst.bid : inst.ask)
-      const pnl = trade.side === 'BUY' 
+      const rawPnl = trade.side === 'BUY' 
         ? (currentPrice - trade.openPrice) * trade.quantity * trade.contractSize
         : (trade.openPrice - currentPrice) * trade.quantity * trade.contractSize
+      const pnl = rawPnl - (trade.commission || 0) - (trade.swap || 0)
 
       if (closeAllType === 'profit') return pnl > 0
       if (closeAllType === 'loss') return pnl < 0
@@ -1706,10 +1708,11 @@ const TradingPage = () => {
                       const currentPrice = livePrice 
                         ? (trade.side === 'BUY' ? livePrice.bid : livePrice.ask)
                         : (trade.side === 'BUY' ? inst.bid : inst.ask)
-                      // Show raw P/L without deducting charges (commission/swap shown separately)
-                      const pnl = trade.side === 'BUY' 
+                      // Calculate P/L including charges (commission + swap)
+                      const rawPnl = trade.side === 'BUY' 
                         ? (currentPrice - trade.openPrice) * trade.quantity * trade.contractSize
                         : (trade.openPrice - currentPrice) * trade.quantity * trade.contractSize
+                      const pnl = rawPnl - (trade.commission || 0) - (trade.swap || 0)
                       
                       // Format price based on symbol type
                       const formatPrice = (price) => {

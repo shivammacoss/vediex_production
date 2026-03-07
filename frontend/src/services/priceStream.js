@@ -117,7 +117,7 @@ class PriceStreamService {
     return this.prices
   }
 
-  // Calculate PnL for a trade using current prices
+  // Calculate PnL for a trade using current prices (includes charges)
   calculatePnl(trade) {
     const prices = this.prices[trade.symbol]
     if (!prices) return 0
@@ -125,11 +125,14 @@ class PriceStreamService {
     const currentPrice = trade.side === 'BUY' ? prices.bid : prices.ask
     const contractSize = trade.contractSize || 100
     
+    let rawPnl = 0
     if (trade.side === 'BUY') {
-      return (currentPrice - trade.openPrice) * trade.quantity * contractSize
+      rawPnl = (currentPrice - trade.openPrice) * trade.quantity * contractSize
     } else {
-      return (trade.openPrice - currentPrice) * trade.quantity * contractSize
+      rawPnl = (trade.openPrice - currentPrice) * trade.quantity * contractSize
     }
+    // Include charges (commission + swap)
+    return rawPnl - (trade.commission || 0) - (trade.swap || 0)
   }
 }
 
