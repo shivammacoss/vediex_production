@@ -751,13 +751,10 @@ const MobileTradingApp = () => {
     const currentPrice = trade.side === 'BUY' ? prices.bid : prices.ask
     // Return previous PnL or 0 if no valid price (prevent flickering)
     if (!currentPrice || currentPrice <= 0) return trade._lastPnl || 0
-    const rawPnl = trade.side === 'BUY'
+    // Show raw P/L without deducting charges (commission/swap shown separately)
+    const pnl = trade.side === 'BUY'
       ? (currentPrice - trade.openPrice) * trade.quantity * (trade.contractSize || 100000)
       : (trade.openPrice - currentPrice) * trade.quantity * (trade.contractSize || 100000)
-    // Include charges (commission + swap) to match web view
-    const commission = trade.commission || 0
-    const swap = trade.swap || 0
-    const pnl = rawPnl - commission - swap
     trade._lastPnl = pnl // Cache for fallback
     return pnl
   }
