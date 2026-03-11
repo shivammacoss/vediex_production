@@ -49,6 +49,12 @@ import AdminProfile from './pages/AdminProfile'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import TermsOfService from './pages/TermsOfService'
 import AccountDeletion from './pages/AccountDeletion'
+import AboutPage from './pages/AboutPage'
+import BlogPage from './pages/BlogPage'
+import CareersPage from './pages/CareersPage'
+import HelpCenterPage from './pages/HelpCenterPage'
+import FAQPage from './pages/FAQPage'
+import ContactPage from './pages/ContactPage'
 
 function App() {
   return (
@@ -104,6 +110,12 @@ function App() {
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-of-service" element={<TermsOfService />} />
         <Route path="/account-deletion" element={<AccountDeletion />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/blog" element={<BlogPage />} />
+        <Route path="/careers" element={<CareersPage />} />
+        <Route path="/help-center" element={<HelpCenterPage />} />
+        <Route path="/faq" element={<FAQPage />} />
+        <Route path="/contact" element={<ContactPage />} />
         <Route path="/:slug/login" element={<BrandedLogin />} />
         <Route path="/:slug/signup" element={<BrandedSignup />} />
       </Routes>

@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { motion, AnimatePresence, useAnimation, useInView } from 'framer-motion'
 import { 
   Menu, X, BarChart3, Bitcoin, TrendingUp, TrendingDown,
   Coins, Star, ArrowRight, LineChart, PieChart, Globe, Zap, DollarSign,
   Activity, Gauge, Shield, Lightbulb, Rocket, Building2, BookOpen, Users, HelpCircle,
   MessageCircle, FileQuestion, Instagram, Facebook, Github, KeyRound, Fingerprint, Server, Lock, Eye, Download,
-  Trophy, Target, CheckCircle, Clock, ChevronRight
+  Trophy, Target, CheckCircle, Clock, ChevronRight, MapPin, Phone, Mail, Copy
 } from 'lucide-react'
 
 // Animation hooks
@@ -491,9 +492,9 @@ const Security = () => {
 const Company = () => {
   const { ref, controls } = useScrollAnimation()
   const sections = [
-    { icon: Building2, title: 'About VEDIEX', description: 'VEDIEX is a next-generation digital trading platform built for the modern investor.', link: 'Learn More', gradient: 'from-[#6C5CE7] to-[#A29BFE]' },
-    { icon: BookOpen, title: 'Blog & Insights', description: 'Stay informed with market analysis, trading strategies, and platform updates.', link: 'Read Blog', gradient: 'from-[#00D2FF] to-blue-400' },
-    { icon: Users, title: 'Careers', description: 'Join a team of innovators shaping the future of digital finance.', link: 'View Openings', gradient: 'from-[#00B894] to-emerald-400' },
+    { icon: Building2, title: 'About VEDIEX', description: 'VEDIEX is a next-generation digital trading platform built for the modern investor. We provide cutting-edge technology, competitive spreads, and 24/7 customer support to help you succeed in the global markets.', link: 'Learn More', href: '/about', gradient: 'from-[#6C5CE7] to-[#A29BFE]' },
+    { icon: BookOpen, title: 'Blog & Insights', description: 'Stay informed with market analysis, trading strategies, and platform updates. Our expert analysts provide daily market commentary and educational content to help you make informed decisions.', link: 'Read Blog', href: '/blog', gradient: 'from-[#00D2FF] to-blue-400' },
+    { icon: Users, title: 'Careers', description: 'Join a team of innovators shaping the future of digital finance. We offer competitive salaries, remote work options, and opportunities to work with cutting-edge technology.', link: 'View Openings', href: '/careers', gradient: 'from-[#00B894] to-emerald-400' },
   ]
 
   return (
@@ -515,10 +516,10 @@ const Company = () => {
                 </div>
                 <h3 className="text-xl font-bold text-white mb-3">{section.title}</h3>
                 <p className="text-sm text-[#8892B0] leading-relaxed mb-6">{section.description}</p>
-                <a href="#" className="group/link inline-flex items-center gap-2 text-sm font-medium text-[#A29BFE] hover:text-white transition-colors">
+                <Link to={section.href} className="group/link inline-flex items-center gap-2 text-sm font-medium text-[#A29BFE] hover:text-white transition-colors">
                   {section.link}
                   <ArrowRight size={14} className="group-hover/link:translate-x-1 transition-transform" />
-                </a>
+                </Link>
               </motion.div>
             )
           })}
@@ -532,9 +533,9 @@ const Company = () => {
 const Support = () => {
   const { ref, controls } = useScrollAnimation()
   const supportItems = [
-    { icon: HelpCircle, title: 'Help Center', description: 'Browse our comprehensive knowledge base with guides and tutorials.', link: 'Visit Help Center', gradient: 'from-[#6C5CE7] to-[#A29BFE]' },
-    { icon: FileQuestion, title: 'FAQ', description: 'Find quick answers to the most commonly asked questions.', link: 'View FAQ', gradient: 'from-[#00D2FF] to-blue-400' },
-    { icon: MessageCircle, title: 'Contact Support', description: 'Get in touch with our dedicated support team available 24/7.', link: 'Contact Us', gradient: 'from-[#00B894] to-emerald-400' },
+    { icon: HelpCircle, title: 'Help Center', description: 'Browse our comprehensive knowledge base with guides and tutorials. Find step-by-step instructions for account setup, deposits, withdrawals, and trading.', link: 'Visit Help Center', href: '/help-center', gradient: 'from-[#6C5CE7] to-[#A29BFE]' },
+    { icon: FileQuestion, title: 'FAQ', description: 'Find quick answers to the most commonly asked questions about trading, account management, fees, and platform features.', link: 'View FAQ', href: '/faq', gradient: 'from-[#00D2FF] to-blue-400' },
+    { icon: MessageCircle, title: 'Contact Support', description: 'Get in touch with our dedicated support team available 24/7. We typically respond within 2 hours during business hours.', link: 'Contact Us', href: '/contact', gradient: 'from-[#00B894] to-emerald-400' },
   ]
 
   return (
@@ -556,10 +557,10 @@ const Support = () => {
                 </div>
                 <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
                 <p className="text-sm text-[#8892B0] leading-relaxed mb-6">{item.description}</p>
-                <a href="#" className="group/link inline-flex items-center gap-2 text-sm font-medium text-[#A29BFE] hover:text-white transition-colors">
+                <Link to={item.href} className="group/link inline-flex items-center gap-2 text-sm font-medium text-[#A29BFE] hover:text-white transition-colors">
                   {item.link}
                   <ArrowRight size={14} className="group-hover/link:translate-x-1 transition-transform" />
-                </a>
+                </Link>
               </motion.div>
             )
           })}
@@ -568,8 +569,8 @@ const Support = () => {
           <h3 className="text-2xl sm:text-3xl font-bold text-white mb-4">Ready to Start Trading?</h3>
           <p className="text-[#8892B0] max-w-lg mx-auto mb-8">Join millions of users worldwide and experience the future of digital trading.</p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a href="/signup" className="px-8 py-4 text-base font-semibold text-white bg-gradient-to-r from-[#6C5CE7] to-[#A29BFE] rounded-xl hover:shadow-xl hover:shadow-[#6C5CE7]/30 transition-all duration-300 hover:-translate-y-0.5">Create Free Account</a>
-            <a href="#" className="px-8 py-4 text-base font-semibold text-white bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all duration-300">Contact Sales</a>
+            <a href={`${TRADE_URL}/user/signup`} className="px-8 py-4 text-base font-semibold text-white bg-gradient-to-r from-[#6C5CE7] to-[#A29BFE] rounded-xl hover:shadow-xl hover:shadow-[#6C5CE7]/30 transition-all duration-300 hover:-translate-y-0.5">Create Free Account</a>
+            <Link to="/contact" className="px-8 py-4 text-base font-semibold text-white bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all duration-300">Contact Sales</Link>
           </div>
         </motion.div>
       </div>
@@ -580,6 +581,21 @@ const Support = () => {
 // ============ FOOTER ============
 const Footer = () => {
   const { ref, controls } = useScrollAnimation(0.05)
+  const [emailCopied, setEmailCopied] = useState(false)
+  
+  const supportEmail = 'support@vediex.com'
+  
+  const copyEmail = async (e) => {
+    e.preventDefault()
+    try {
+      await navigator.clipboard.writeText(supportEmail)
+      setEmailCopied(true)
+      setTimeout(() => setEmailCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy email:', err)
+    }
+  }
+  
   const footerLinks = {
     Products: [
       { label: 'Stock Tokens', href: '#solutions' },
@@ -594,16 +610,16 @@ const Footer = () => {
       { label: 'Trading Pairs', href: `${TRADE_URL}/user/login` },
     ],
     Company: [
-      { label: 'About VEDIEX', href: '#company' },
-      { label: 'Blog & Insights', href: '#company' },
-      { label: 'Careers', href: '#company' },
-      { label: 'Partners', href: '#company' },
+      { label: 'About VEDIEX', href: '/about' },
+      { label: 'Blog & Insights', href: '/blog' },
+      { label: 'Careers', href: '/careers' },
+      { label: 'Partners', href: '/about' },
     ],
-    Legal: [
+    Support: [
+      { label: 'Help Center', href: '/help-center' },
+      { label: 'FAQ', href: '/faq' },
+      { label: 'Contact Us', href: '/contact' },
       { label: 'Terms of Service', href: '/terms-of-service' },
-      { label: 'Privacy Policy', href: '/privacy-policy' },
-      { label: 'Risk Disclosure', href: '/terms-of-service' },
-      { label: 'Compliance', href: '/terms-of-service' },
     ],
   }
   const socialLinks = [
@@ -630,44 +646,85 @@ const Footer = () => {
       <div className="absolute inset-0"><div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-[#6C5CE7]/3 rounded-full blur-[120px]" /></div>
       <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div ref={ref} initial="hidden" animate={controls} variants={staggerContainer}>
-          <motion.div variants={fadeUp} className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 mb-16">
-            <div className="col-span-2 md:col-span-4 lg:col-span-1 mb-4 lg:mb-0">
+          <motion.div variants={fadeUp} className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8 mb-16">
+            {/* Logo & Contact Info */}
+            <div className="col-span-2 mb-4 lg:mb-0">
               <a href="#" className="flex items-center gap-2 mb-4">
                 <img src="/logo_edited.png" alt="VEDIEX" className="h-14 w-auto" />
               </a>
               <p className="text-sm text-[#8892B0] leading-relaxed mb-6 max-w-xs">A smart digital platform designed for speed, security, and full control over your trading experience.</p>
+              
+              {/* Contact Info */}
+              <div className="space-y-3 mb-6">
+                <div className="flex items-start gap-3">
+                  <MapPin size={16} className="text-[#6C5CE7] mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-[#8892B0]">123 Financial District, Suite 500<br />New York, NY 10004, USA</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Phone size={16} className="text-[#6C5CE7] flex-shrink-0" />
+                  <a href="tel:+1-800-VEDIEX" className="text-sm text-[#8892B0] hover:text-white transition-colors">+1 (800) 833-4439</a>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Mail size={16} className="text-[#6C5CE7] flex-shrink-0" />
+                  <div className="flex items-center gap-2">
+                    <a href={`https://mail.google.com/mail/?view=cm&fs=1&to=${supportEmail}`} target="_blank" rel="noopener noreferrer" className="text-sm text-[#8892B0] hover:text-white transition-colors">{supportEmail}</a>
+                    <button 
+                      onClick={copyEmail} 
+                      className="p-1 rounded hover:bg-white/10 transition-colors group relative"
+                      title="Copy email"
+                    >
+                      <Copy size={14} className="text-[#8892B0] group-hover:text-white" />
+                      {emailCopied && (
+                        <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 text-xs bg-[#00B894] text-white rounded whitespace-nowrap">
+                          Copied!
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Social Links */}
               <div className="flex items-center gap-3">
                 {socialLinks.map((social) => {
                   const Icon = social.icon
                   return (
-                    <a key={social.label} href={social.href} aria-label={social.label} className="w-9 h-9 rounded-lg bg-white/5 border border-[rgba(108,92,231,0.15)] flex items-center justify-center text-[#8892B0] hover:text-white hover:bg-[#6C5CE7]/20 hover:border-[#6C5CE7]/30 transition-all duration-200">
+                    <a key={social.label} href={social.href} target="_blank" rel="noopener noreferrer" aria-label={social.label} className="w-9 h-9 rounded-lg bg-white/5 border border-[rgba(108,92,231,0.15)] flex items-center justify-center text-[#8892B0] hover:text-white hover:bg-[#6C5CE7]/20 hover:border-[#6C5CE7]/30 transition-all duration-200">
                       <Icon size={16} />
                     </a>
                   )
                 })}
               </div>
             </div>
+            
+            {/* Footer Links */}
             {Object.entries(footerLinks).map(([category, links]) => (
               <div key={category}>
                 <h4 className="text-sm font-semibold text-white mb-4">{category}</h4>
                 <ul className="space-y-3">
                   {links.map((link) => (
                     <li key={link.label}>
-                      <a href={link.href} onClick={(e) => handleFooterClick(e, link.href)} className="text-sm text-[#8892B0] hover:text-white transition-colors duration-200 cursor-pointer">{link.label}</a>
+                      {link.href.startsWith('#') ? (
+                        <a href={link.href} onClick={(e) => handleFooterClick(e, link.href)} className="text-sm text-[#8892B0] hover:text-white transition-colors duration-200 cursor-pointer">{link.label}</a>
+                      ) : (
+                        <Link to={link.href} className="text-sm text-[#8892B0] hover:text-white transition-colors duration-200">{link.label}</Link>
+                      )}
                     </li>
                   ))}
                 </ul>
               </div>
             ))}
           </motion.div>
+          
+          {/* Bottom Bar */}
           <motion.div variants={fadeUp} className="border-t border-[rgba(108,92,231,0.15)] pt-8">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <p className="text-sm text-[#8892B0]">&copy; 2026 VEDIEX. All rights reserved.</p>
-              <div className="flex items-center gap-6">
-                <a href="/terms-of-service" className="text-xs text-[#8892B0] hover:text-white transition-colors">Terms</a>
-                <a href="/privacy-policy" className="text-xs text-[#8892B0] hover:text-white transition-colors">Privacy</a>
-                <a href="#" className="text-xs text-[#8892B0] hover:text-white transition-colors">Risk Disclosure</a>
-                <a href="#" className="text-xs text-[#8892B0] hover:text-white transition-colors">Cookies</a>
+              <p className="text-sm text-[#8892B0]">&copy; {new Date().getFullYear()} VEDIEX. All rights reserved.</p>
+              <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
+                <Link to="/terms-of-service" className="text-xs text-[#8892B0] hover:text-white transition-colors">Terms</Link>
+                <Link to="/privacy-policy" className="text-xs text-[#8892B0] hover:text-white transition-colors">Privacy</Link>
+                <Link to="/terms-of-service" className="text-xs text-[#8892B0] hover:text-white transition-colors">Risk Disclosure</Link>
+                <Link to="/privacy-policy" className="text-xs text-[#8892B0] hover:text-white transition-colors">Cookies</Link>
               </div>
             </div>
           </motion.div>
