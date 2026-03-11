@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, MapPin, Clock, DollarSign, ArrowRight, Briefcase, Code, Headphones, TrendingUp } from 'lucide-react'
+import { ArrowLeft, MapPin, Clock, DollarSign, Briefcase } from 'lucide-react'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 40 },
@@ -20,57 +20,7 @@ const CareersPage = () => {
     { icon: Briefcase, title: 'Career Growth', description: 'Clear career paths and continuous learning opportunities.' },
   ]
 
-  const jobs = [
-    {
-      title: 'Senior Backend Engineer',
-      department: 'Engineering',
-      location: 'Remote',
-      type: 'Full-time',
-      salary: '$150K - $200K',
-      icon: Code,
-    },
-    {
-      title: 'Frontend Developer (React)',
-      department: 'Engineering',
-      location: 'Remote',
-      type: 'Full-time',
-      salary: '$120K - $160K',
-      icon: Code,
-    },
-    {
-      title: 'Senior Product Manager',
-      department: 'Product',
-      location: 'New York, USA',
-      type: 'Full-time',
-      salary: '$140K - $180K',
-      icon: Briefcase,
-    },
-    {
-      title: 'Customer Support Specialist',
-      department: 'Support',
-      location: 'Remote',
-      type: 'Full-time',
-      salary: '$50K - $70K',
-      icon: Headphones,
-    },
-    {
-      title: 'Quantitative Analyst',
-      department: 'Trading',
-      location: 'London, UK',
-      type: 'Full-time',
-      salary: '$180K - $250K',
-      icon: TrendingUp,
-    },
-    {
-      title: 'DevOps Engineer',
-      department: 'Engineering',
-      location: 'Remote',
-      type: 'Full-time',
-      salary: '$130K - $170K',
-      icon: Code,
-    },
-  ]
-
+  
   return (
     <div className="min-h-screen bg-[#0B0D17]">
       {/* Header */}
@@ -122,48 +72,6 @@ const CareersPage = () => {
                   </div>
                   <h3 className="text-lg font-semibold text-white mb-2">{benefit.title}</h3>
                   <p className="text-sm text-[#8892B0]">{benefit.description}</p>
-                </motion.div>
-              )
-            })}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Open Positions */}
-      <section className="py-20 px-4">
-        <div className="max-w-7xl mx-auto">
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={staggerContainer} className="text-center mb-16">
-            <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl font-bold text-white mb-4">Open Positions</motion.h2>
-            <motion.p variants={fadeUp} className="text-lg text-[#8892B0] max-w-2xl mx-auto">Find your next opportunity and join our mission to democratize trading.</motion.p>
-          </motion.div>
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={staggerContainer} className="space-y-4">
-            {jobs.map((job) => {
-              const Icon = job.icon
-              return (
-                <motion.div key={job.title} variants={fadeUp} className="group p-6 rounded-2xl bg-[#12152B] border border-[rgba(108,92,231,0.15)] hover:border-[#6C5CE7]/30 transition-all cursor-pointer">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-[#6C5CE7]/10 flex items-center justify-center flex-shrink-0">
-                        <Icon size={22} className="text-[#6C5CE7]" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-white group-hover:text-[#6C5CE7] transition-colors">{job.title}</h3>
-                        <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-[#8892B0]">
-                          <span>{job.department}</span>
-                          <span>•</span>
-                          <span className="flex items-center gap-1"><MapPin size={14} /> {job.location}</span>
-                          <span>•</span>
-                          <span>{job.type}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-[#00B894] font-medium">{job.salary}</span>
-                      <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[#6C5CE7] rounded-lg hover:bg-[#5B4BD5] transition-colors">
-                        Apply <ArrowRight size={14} />
-                      </button>
-                    </div>
-                  </div>
                 </motion.div>
               )
             })}
