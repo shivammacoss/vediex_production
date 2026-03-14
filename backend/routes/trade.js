@@ -511,22 +511,49 @@ router.get('/history/:tradingAccountId', async (req, res) => {
     const { tradingAccountId } = req.params
     const { limit = 50, offset = 0 } = req.query
 
-    const trades = await Trade.find({ 
+    // Get fully closed trades
+    const closedTrades = await Trade.find({ 
       tradingAccountId, 
       status: 'CLOSED' 
-    })
-      .sort({ closedAt: -1 })
-      .skip(parseInt(offset))
-      .limit(parseInt(limit))
+    }).lean()
 
-    const total = await Trade.countDocuments({ 
-      tradingAccountId, 
-      status: 'CLOSED' 
-    })
+    // Get partial close history records
+    const partialCloses = await PartialCloseHistory.find({
+      tradingAccountId
+    }).lean()
+
+    // Transform partial closes to match trade history format
+    const partialCloseRecords = partialCloses.map(pc => ({
+      _id: pc._id,
+      tradeId: pc.tradeIdString || pc.tradeId,
+      userId: pc.userId,
+      tradingAccountId: pc.tradingAccountId,
+      symbol: pc.symbol,
+      side: pc.side,
+      quantity: pc.closedLot,
+      openPrice: pc.openPrice,
+      closePrice: pc.closePrice,
+      realizedPnl: pc.realizedPnl,
+      commission: pc.commission,
+      swap: pc.swap,
+      status: 'CLOSED',
+      closedAt: pc.closedAt,
+      closeReason: pc.closedBy || 'PARTIAL_CLOSE',
+      isPartialClose: true,
+      originalLot: pc.originalLot,
+      remainingLot: pc.remainingLot
+    }))
+
+    // Combine and sort by closedAt descending
+    const allTrades = [...closedTrades, ...partialCloseRecords]
+      .sort((a, b) => new Date(b.closedAt) - new Date(a.closedAt))
+      .slice(parseInt(offset), parseInt(offset) + parseInt(limit))
+
+    const total = closedTrades.length + partialCloseRecords.length
 
     res.json({
       success: true,
-      trades,
+      trades: allTrades,
       total,
       limit: parseInt(limit),
       offset: parseInt(offset)
@@ -1101,6 +1128,29 @@ router.get('/partial-history/:tradeId', async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching partial close history:', error)
+    res.status(500).json({
+      success: false,
+      message: error.message
+    })
+  }
+})
+
+// GET /api/trade/partial-history-account/:tradingAccountId - Get all partial close history for an account
+router.get('/partial-history-account/:tradingAccountId', async (req, res) => {
+  try {
+    const { tradingAccountId } = req.params
+
+    const history = await PartialCloseHistory.find({
+      tradingAccountId: tradingAccountId
+    }).sort({ closedAt: -1 })
+
+    res.json({
+      success: true,
+      history: history
+    })
+
+  } catch (error) {
+    console.error('Error fetching partial close history for account:', error)
     res.status(500).json({
       success: false,
       message: error.message
