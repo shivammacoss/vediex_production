@@ -13,18 +13,28 @@ import infowayService from '../services/infowayService.js'
 import lpService from '../services/lpService.js'
 import User from '../models/User.js'
 
-// Fetch fresh price from Infoway
-async function getFreshPrice(symbol) {
+// Fetch fresh price from Infoway with book-based spread logic
+async function getFreshPrice(symbol, bookType = null) {
   try {
     // Try cache first
     let price = infowayService.getPrice(symbol)
     if (price) {
+      // Use book-based pricing
+      const bookPrice = await infowayService.getPriceWithSpread(symbol, bookType)
+      if (bookPrice) {
+        return { bid: bookPrice.bid, ask: bookPrice.ask }
+      }
       return { bid: price.bid, ask: price.ask }
     }
     
     // Fetch via REST API
     price = await infowayService.fetchPriceREST(symbol)
     if (price) {
+      // Use book-based pricing
+      const bookPrice = await infowayService.getPriceWithSpread(symbol, bookType)
+      if (bookPrice) {
+        return { bid: bookPrice.bid, ask: bookPrice.ask }
+      }
       return { bid: price.bid, ask: price.ask }
     }
     
@@ -149,7 +159,24 @@ router.post('/open', async (req, res) => {
       })
     }
 
-    // Regular trading account - use standard trade engine
+    // Regular trading account - use standard trade engine with book-based pricing
+    // Get user's book type to determine pricing
+    const user = await User.findById(userId)
+    const bookType = user?.bookType === 'A' ? 'A_BOOK' : (user?.bookType === 'B' ? 'B_BOOK' : null)
+    
+    console.log(`[Trade] User ${user?.email} book type: ${bookType || 'B_BOOK'} - pricing accordingly`)
+    
+    // Get appropriate pricing based on book assignment
+    const bookPrice = await infowayService.getPriceWithSpread(symbol, bookType)
+    let finalBid = parseFloat(bid)
+    let finalAsk = parseFloat(ask)
+    
+    if (bookPrice) {
+      finalBid = bookPrice.bid
+      finalAsk = bookPrice.ask
+      console.log(`[Trade] Applied ${bookType || 'B_BOOK'} pricing: bid=${finalBid}, ask=${finalAsk}`)
+    }
+    
     const trade = await tradeEngine.openTrade(
       userId,
       tradingAccountId,
@@ -158,8 +185,8 @@ router.post('/open', async (req, res) => {
       side,
       orderType,
       parseFloat(quantity),
-      parseFloat(bid),
-      parseFloat(ask),
+      finalBid,
+      finalAsk,
       sl ? parseFloat(sl) : null,
       tp ? parseFloat(tp) : null,
       leverage // Pass user-selected leverage
@@ -182,9 +209,8 @@ router.post('/open', async (req, res) => {
     }
 
     // Check if user is A-Book and push trade to Corecen LP
-    try {
-      const user = await User.findById(userId)
-      if (user && user.bookType === 'A') {
+    if (user && user.bookType === 'A') {
+      try {
         console.log(`[A-BOOK PUSH] ========================================`)
         console.log(`[A-BOOK PUSH] User: ${user.email}`)
         console.log(`[A-BOOK PUSH] Trade ID (internal): ${trade._id}`)
@@ -202,9 +228,9 @@ router.post('/open', async (req, res) => {
         }).catch(err => {
           console.error('[A-BOOK PUSH] FAILED:', err.message)
         })
+      } catch (lpError) {
+        console.error('[Trade] Error in A-Book push:', lpError)
       }
-    } catch (lpError) {
-      console.error('[Trade] Error checking A-Book status:', lpError)
     }
 
     res.json({

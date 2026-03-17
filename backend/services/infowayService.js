@@ -3,6 +3,7 @@
 // Data feed handled by broker - no API key required
 
 import WebSocket from 'ws'
+import Charges from '../models/Charges.js'
 
 // Protocol codes
 const PROTOCOL = {
@@ -233,24 +234,29 @@ function getConnectionStatus() {
 
 /**
  * Update price from Corecen LP feed
+ * Removes Infoway market spread and applies default spread
  * Called by LP routes when receiving price updates
  */
-function updatePrice(symbol, priceData) {
+async function updatePrice(symbol, priceData) {
   const { bid, ask, spread, timestamp, source } = priceData
   
-  // Store in cache
+  // Calculate mid price from Infoway data (removing their spread)
+  const midPrice = (bid + ask) / 2
+  
+  // Store both clean and spread prices for different use cases
   priceCache.set(symbol, {
-    bid,
-    ask,
-    spread: spread || (ask - bid),
+    bid: midPrice,      // Zero spread for broker platform
+    ask: midPrice,      // Zero spread for broker platform
+    spread: 0,          // Zero spread for broker platform
+    midPrice: midPrice, // Store mid price for reference
     timestamp: timestamp || Date.now(),
-    source: source || 'CORECEN'
+    source: 'CORECEN_CLEAN'
   })
   
   // Mark as connected if we're receiving prices
   if (!isConnected) {
     isConnected = true
-    priceSource = 'CORECEN'
+    priceSource = 'CORECEN_CLEAN'
     if (onConnectionChange) onConnectionChange(true)
   }
   
@@ -258,6 +264,66 @@ function updatePrice(symbol, priceData) {
   if (onPriceUpdate) {
     onPriceUpdate(symbol, priceCache.get(symbol))
   }
+}
+
+/**
+ * Get price with appropriate spread based on book assignment
+ * @param {string} symbol - Symbol to get price for
+ * @param {string} bookType - 'A_BOOK', 'B_BOOK', or null for broker platform
+ * @returns {Object} Price data with appropriate spread
+ */
+async function getPriceWithSpread(symbol, bookType = null) {
+  const basePrice = priceCache.get(symbol)
+  if (!basePrice) return null
+  
+  // For broker platform trading (no book assignment) - zero spread
+  if (!bookType || bookType === 'B_BOOK') {
+    return {
+      bid: basePrice.midPrice,
+      ask: basePrice.midPrice,
+      spread: 0,
+      timestamp: basePrice.timestamp,
+      source: 'BROKER_PLATFORM'
+    }
+  }
+  
+  // For A-Book users - apply default spread for LP/Corecen
+  if (bookType === 'A_BOOK') {
+    const segment = categorizeSymbol(symbol)
+    const defaultSpread = await getDefaultSpread(symbol, segment)
+    
+    let newBid, newAsk, newSpread
+    
+    if (defaultSpread.type === 'FIXED') {
+      let spreadValue = defaultSpread.value
+      
+      if (segment === 'Forex') {
+        spreadValue = spreadValue * 0.0001
+        if (symbol.includes('JPY')) spreadValue *= 100
+      }
+      
+      newBid = basePrice.midPrice - spreadValue
+      newAsk = basePrice.midPrice + spreadValue
+      newSpread = newAsk - newBid
+    } else {
+      const spreadAmount = basePrice.midPrice * (defaultSpread.value / 100)
+      newBid = basePrice.midPrice - spreadAmount
+      newAsk = basePrice.midPrice + spreadAmount
+      newSpread = newAsk - newBid
+    }
+    
+    console.log(`[Infoway] ${symbol} A-Book: bid=${newBid.toFixed(5)}, ask=${newAsk.toFixed(5)}, spread=${newSpread.toFixed(5)} (LP/Corecen)`)
+    
+    return {
+      bid: newBid,
+      ask: newAsk,
+      spread: newSpread,
+      timestamp: basePrice.timestamp,
+      source: 'A_BOOK_LP'
+    }
+  }
+  
+  return basePrice
 }
 
 // Categorize symbol for frontend
@@ -277,7 +343,36 @@ function categorizeSymbol(symbol) {
 
 // Get symbol name from API data
 function getSymbolName(symbol) {
-  return symbolNames[symbol] || symbolNames[SYMBOL_MAP[symbol]] || symbol
+  return symbolNames[symbol] || symbol
+}
+
+// Calculate default spread for a symbol using Charges system
+async function getDefaultSpread(symbol, segment) {
+  try {
+    // Get global/default charges for this segment
+    const charges = await Charges.getChargesForTrade(null, symbol, segment, null)
+    
+    if (charges.spreadValue > 0) {
+      console.log(`[Infoway] Using default spread for ${symbol}: ${charges.spreadValue} (${charges.spreadType})`)
+      return { value: charges.spreadValue, type: charges.spreadType }
+    }
+    
+    // Fallback default spreads if no charges configured
+    const fallbackSpreads = {
+      'Forex': { value: 1.5, type: 'FIXED' },      // 1.5 pips
+      'Metals': { value: 50, type: 'FIXED' },      // 50 cents
+      'Crypto': { value: 10, type: 'FIXED' },      // $10
+      'Energy': { value: 0.05, type: 'FIXED' },     // 5 cents
+      'Stocks': { value: 0.01, type: 'FIXED' }      // 1 cent
+    }
+    
+    const fallback = fallbackSpreads[segment] || { value: 0, type: 'FIXED' }
+    console.log(`[Infoway] Using fallback spread for ${symbol}: ${fallback.value} (${fallback.type})`)
+    return fallback
+  } catch (error) {
+    console.error(`[Infoway] Error getting default spread for ${symbol}:`, error)
+    return { value: 0, type: 'FIXED' }
+  }
 }
 
 // Get dynamic symbols for frontend
@@ -289,6 +384,7 @@ export default {
   connect,
   disconnect,
   getPrice,
+  getPriceWithSpread, // New function for book-based pricing
   getAllPrices,
   getPriceCache,
   fetchPriceREST,
