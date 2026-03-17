@@ -390,7 +390,14 @@ class TradeEngine {
 
   // Close a trade
   async closeTrade(tradeId, currentBid, currentAsk, closedBy = 'USER', adminId = null) {
-    const trade = await Trade.findById(tradeId).populate({ path: 'tradingAccountId', populate: { path: 'accountTypeId' } })
+    const trade = await Trade.findById(tradeId).populate({ 
+      path: 'tradingAccountId', 
+      populate: { 
+        path: 'accountTypeId',
+        strictPopulate: false
+      },
+      strictPopulate: false
+    })
     if (!trade) throw new Error('Trade not found')
     if (trade.status !== 'OPEN') throw new Error('Trade is not open')
 
