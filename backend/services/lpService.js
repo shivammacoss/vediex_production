@@ -373,10 +373,23 @@ class LPService {
   generateCorecenSignature(timestamp, method, path, body = '') {
     const config = this.getCorecenConfig()
     const signatureData = timestamp + method + path + body
-    return crypto
+    
+    // Debug logging
+    console.log(`[LP Service] Signature Debug:`)
+    console.log(`  Timestamp: ${timestamp}`)
+    console.log(`  Method: ${method}`)
+    console.log(`  Path: ${path}`)
+    console.log(`  Body: ${body}`)
+    console.log(`  Signature Data: "${signatureData}"`)
+    console.log(`  API Secret: ${config.apiSecret ? 'configured' : 'missing'}`)
+    
+    const signature = crypto
       .createHmac('sha256', config.apiSecret)
       .update(signatureData)
       .digest('hex')
+    
+    console.log(`  Generated Signature: ${signature}`)
+    return signature
   }
 
   // Push A-Book trade to Corecen
