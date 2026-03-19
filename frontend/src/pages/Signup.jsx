@@ -275,7 +275,7 @@ const Signup = () => {
         try {
           const signupData = {
             ...formData,
-            referralCode: referralCode || undefined,
+            referralCode: formData.referralCode || undefined,
             otpVerified: true
           }
           

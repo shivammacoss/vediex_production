@@ -240,6 +240,17 @@ app.get('/downloads/Vediex.apk', (req, res) => {
   })
 })
 
+// App version check API for mobile app updates
+app.get('/api/app-version', (req, res) => {
+  res.json({
+    currentVersion: '1.0.0',
+    minVersion: '1.0.0',
+    forceUpdate: false,
+    downloadUrl: '/downloads/Vediex.apk',
+    releaseNotes: 'Fixed commodity charts (USOIL, UKOIL, NGAS)'
+  });
+});
+
 // Health check
 app.get('/', (req, res) => {
   res.json({ message: 'Vediex API is running' })
