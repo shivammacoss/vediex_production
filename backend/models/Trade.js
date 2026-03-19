@@ -31,7 +31,7 @@ const tradeSchema = new mongoose.Schema({
   },
   segment: {
     type: String,
-    enum: ['Forex', 'Crypto', 'Commodities', 'Indices', 'Metals', 'FOREX', 'CRYPTO', 'COMMODITIES', 'INDICES', 'METALS'],
+    enum: ['Forex', 'Crypto', 'Commodities', 'Indices', 'Metals', 'Energy', 'Stocks', 'FOREX', 'CRYPTO', 'COMMODITIES', 'INDICES', 'METALS', 'ENERGY', 'STOCKS'],
     required: true
   },
   side: {
