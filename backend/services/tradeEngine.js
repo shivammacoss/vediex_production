@@ -67,7 +67,26 @@ class TradeEngine {
   // Example: 0.01 lot XAUUSD at $2650 with 1:100 leverage
   // = (0.01 * 100 * 2650) / 100 = $26.50 margin required
   calculateMargin(quantity, openPrice, leverage, contractSize = this.CONTRACT_SIZE) {
-    const leverageNum = parseInt(leverage.toString().replace('1:', '')) || 100
+    // Parse leverage - handle formats: "1:100", "100", 100, "1:1", "1", 1
+    let leverageNum = 100 // Default to 100
+    if (leverage) {
+      const leverageStr = leverage.toString()
+      if (leverageStr.includes(':')) {
+        // Format: "1:100" -> extract 100
+        leverageNum = parseInt(leverageStr.split(':')[1]) || 100
+      } else {
+        // Format: "100" or 100
+        leverageNum = parseInt(leverageStr) || 100
+      }
+    }
+    
+    // SAFETY: Ensure leverage is at least 1 (prevent division by zero or negative)
+    // and if leverage is 1, it's likely a parsing error - default to 100
+    if (leverageNum <= 1) {
+      console.log(`[MARGIN_WARNING] Leverage parsed as ${leverageNum}, defaulting to 100`)
+      leverageNum = 100
+    }
+    
     const margin = (quantity * contractSize * openPrice) / leverageNum
     return Math.round(margin * 100) / 100 // Round to 2 decimal places
   }
@@ -299,20 +318,40 @@ class TradeEngine {
 
     // Use user-selected leverage if provided, otherwise use account's leverage
     // User can select any leverage up to account's max leverage
-    const accountMaxLeverage = parseInt(account.leverage.toString().replace('1:', '')) || 100
+    // Parse account leverage - handle formats: "1:100", "100", 100
+    let accountMaxLeverage = 100
+    if (account.leverage) {
+      const levStr = account.leverage.toString()
+      if (levStr.includes(':')) {
+        accountMaxLeverage = parseInt(levStr.split(':')[1]) || 100
+      } else {
+        accountMaxLeverage = parseInt(levStr) || 100
+      }
+    }
+    // Safety: if leverage is 1 or less, it's likely a parsing error
+    if (accountMaxLeverage <= 1) accountMaxLeverage = 100
+    
     let selectedLeverage = accountMaxLeverage
     
     if (userLeverage) {
-      const userLeverageNum = parseInt(userLeverage.toString().replace('1:', '')) || accountMaxLeverage
+      // Parse user leverage - handle formats: "1:100", "100", 100
+      let userLeverageNum = accountMaxLeverage
+      const userLevStr = userLeverage.toString()
+      if (userLevStr.includes(':')) {
+        userLeverageNum = parseInt(userLevStr.split(':')[1]) || accountMaxLeverage
+      } else {
+        userLeverageNum = parseInt(userLevStr) || accountMaxLeverage
+      }
       // User can only use leverage up to account's max
       selectedLeverage = Math.min(userLeverageNum, accountMaxLeverage)
     }
     
     const leverage = `1:${selectedLeverage}`
+    
     const marginRequired = this.calculateMargin(quantity, openPrice, leverage, contractSize)
     
-    // Log for debugging
-    console.log(`Trade validation: ${quantity} lots ${symbol} @ ${openPrice}, Contract: ${contractSize}, Leverage: ${leverage}, Margin Required: $${marginRequired}`)
+    // Log trade details
+    console.log(`[Trade] ${quantity} lots ${symbol} @ ${openPrice}, Leverage: ${leverage}, Margin: $${marginRequired}`)
 
     // Validate trade - pass the correct parameters
     const validation = await this.validateTradeOpen(tradingAccountId, symbol, side, quantity, openPrice, leverage, contractSize)
@@ -364,7 +403,7 @@ class TradeEngine {
       stopLoss: sl,
       takeProfit: tp,
       marginUsed: marginRequired,
-      leverage: parseInt(leverage.toString().replace('1:', '')) || 100,
+      leverage: selectedLeverage, // Already parsed correctly above
       contractSize: contractSize,
       spread: spreadCost, // Store spread cost in USD (not pips)
       commission,
