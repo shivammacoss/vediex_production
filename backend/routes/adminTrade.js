@@ -58,7 +58,8 @@ router.post('/create', async (req, res) => {
     // Get contract size
     const contractSize = tradeEngine.getContractSize(symbol)
     const leverage = account.leverage || '1:100'
-    // Parse leverage - handle formats: "1:100", "100", 100
+    const marginRequired = tradeEngine.calculateMargin(quantity, openPrice, leverage, contractSize, symbol)
+
     let leverageNum = 100
     const levStr = leverage.toString()
     if (levStr.includes(':')) {
@@ -66,8 +67,7 @@ router.post('/create', async (req, res) => {
     } else {
       leverageNum = parseInt(levStr) || 100
     }
-    if (leverageNum <= 1) leverageNum = 100 // Safety: default to 100 if parsing fails
-    const marginRequired = (quantity * contractSize * openPrice) / leverageNum
+    if (leverageNum <= 1) leverageNum = 100
 
     // Generate trade ID
     const tradeId = await Trade.generateTradeId()

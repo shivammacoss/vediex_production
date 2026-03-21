@@ -5,6 +5,7 @@ import Trade from '../models/Trade.js'
 import User from '../models/User.js'
 import Charges from '../models/Charges.js'
 import { sendTemplateEmail } from '../services/emailService.js'
+import infowayService from './infowayService.js'
 
 class PropTradingEngine {
   constructor() {
@@ -1042,9 +1043,25 @@ class PropTradingEngine {
     return Math.abs(priceDiff * quantity * contractSize)
   }
 
+  getQuoteToUsdRate(quoteCurrency) {
+    if (quoteCurrency === 'USD') return 1
+    const quoteUsdPrice = infowayService.getPrice(`${quoteCurrency}USD`)
+    if (quoteUsdPrice && quoteUsdPrice.bid > 0) return quoteUsdPrice.bid
+    const usdQuotePrice = infowayService.getPrice(`USD${quoteCurrency}`)
+    if (usdQuotePrice && usdQuotePrice.bid > 0) return 1 / usdQuotePrice.bid
+    return 1
+  }
+
   calculateMargin(tradeParams, account) {
-    const { quantity, openPrice, leverage = 100, contractSize = 100000 } = tradeParams
-    return (quantity * openPrice * contractSize) / leverage
+    const { quantity, openPrice, leverage = 100, contractSize = 100000, symbol = '' } = tradeParams
+    let margin = (quantity * openPrice * contractSize) / leverage
+
+    if (symbol && symbol.length === 6) {
+      const quoteCurrency = symbol.slice(3)
+      margin = margin * this.getQuoteToUsdRate(quoteCurrency)
+    }
+
+    return margin
   }
 
   // Get challenge account dashboard data

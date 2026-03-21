@@ -740,10 +740,12 @@ const TradingPage = () => {
       const data = await res.json()
 
       if (data.success) {
-        setTradeSuccess(`${side} order executed successfully!`)
+        const msg = data.leverageWarning
+          ? `${side} order executed. ${data.leverageWarning}`
+          : `${side} order executed successfully!`
+        setTradeSuccess(msg)
         fetchOpenTrades()
         fetchAccountSummary()
-        // Clear SL/TP after successful trade
         setStopLoss('')
         setTakeProfit('')
         setShowStopLoss(false)
@@ -1265,11 +1267,29 @@ const TradingPage = () => {
     }
   }
 
+  const getQuoteToUsdRate = (symbol) => {
+    if (!symbol || symbol.length !== 6) return 1
+    const quote = symbol.slice(3)
+    if (quote === 'USD') return 1
+    const quoteUsd = livePrices[`${quote}USD`]
+    if (quoteUsd?.bid > 0) return quoteUsd.bid
+    const usdQuote = livePrices[`USD${quote}`]
+    if (usdQuote?.bid > 0) return 1 / usdQuote.bid
+    return 1
+  }
+
   const calculateMargin = () => {
     const vol = parseFloat(volume) || 0
     const price = selectedInstrument.ask || 0
     const lev = parseInt(leverage?.split(':')[1]) || 100
-    return ((vol * 100000 * price) / lev).toFixed(2)
+    const sym = selectedInstrument.symbol || ''
+    const contractSize = ['BTCUSD', 'ETHUSD', 'LTCUSD', 'XRPUSD'].includes(sym) ? 1
+      : sym === 'XAUUSD' ? 100
+      : sym === 'XAGUSD' ? 5000
+      : 100000
+    const rawMargin = (vol * contractSize * price) / lev
+    const conversionRate = getQuoteToUsdRate(sym)
+    return (rawMargin * conversionRate).toFixed(2)
   }
 
   if (loading) {
@@ -2063,8 +2083,9 @@ const TradingPage = () => {
                             : selectedInstrument.symbol === 'XAUUSD' ? 100 
                             : selectedInstrument.symbol === 'XAGUSD' ? 5000 
                             : 100000
-                          const margin = (parseFloat(volume || 0) * contractSize * (selectedInstrument.ask || 0)) / leverageNum
-                          return margin.toFixed(2)
+                          const rawMargin = (parseFloat(volume || 0) * contractSize * (selectedInstrument.ask || 0)) / leverageNum
+                          const convRate = getQuoteToUsdRate(selectedInstrument.symbol)
+                          return (rawMargin * convRate).toFixed(2)
                         })()}
                       </div>
                     </div>
