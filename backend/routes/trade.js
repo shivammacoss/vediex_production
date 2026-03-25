@@ -223,7 +223,7 @@ router.post('/open', async (req, res) => {
         trade.bookType = 'A_BOOK'
         await trade.save()
         
-        lpService.pushTradeToCorecen(trade, user).then(result => {
+        lpService.pushTradeToCorecen(trade, user, { retroactive: true }).then(result => {
           console.log(`[A-BOOK PUSH] Result:`, JSON.stringify(result, null, 2))
         }).catch(err => {
           console.error('[A-BOOK PUSH] FAILED:', err.message)
