@@ -524,7 +524,10 @@ const MobileTradingApp = () => {
           setEntryPrice('')
         } else {
           fetchOpenTrades()
-          showNotification('Order executed successfully!', 'success')
+          const msg = data.leverageWarning
+            ? `Order executed. ${data.leverageWarning}`
+            : 'Order executed successfully!'
+          showNotification(msg, 'success')
         }
         fetchAccountSummary()
       } else {

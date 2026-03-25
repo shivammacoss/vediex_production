@@ -5,6 +5,7 @@ import TradeSettings from '../models/TradeSettings.js'
 import AdminLog from '../models/AdminLog.js'
 import ibEngine from './ibEngineNew.js'
 import lpService from './lpService.js'
+import infowayService from './infowayService.js'
 
 class TradeEngine {
   constructor() {
@@ -62,11 +63,35 @@ class TradeEngine {
     }
   }
 
-  // Calculate margin required for a trade
-  // Formula: (Lots * Contract Size * Price) / Leverage
-  // Example: 0.01 lot XAUUSD at $2650 with 1:100 leverage
-  // = (0.01 * 100 * 2650) / 100 = $26.50 margin required
-  calculateMargin(quantity, openPrice, leverage, contractSize = this.CONTRACT_SIZE) {
+  getQuoteCurrency(symbol) {
+    if (['XAUUSD', 'XAGUSD', 'BTCUSD', 'ETHUSD', 'LTCUSD', 'XRPUSD', 'BCHUSD',
+         'BNBUSD', 'SOLUSD', 'ADAUSD', 'DOGEUSD', 'DOTUSD', 'MATICUSD', 'LINKUSD', 'AVAXUSD'].includes(symbol)) return 'USD'
+    if (['US30', 'US500', 'US100', 'GER40', 'UK100'].includes(symbol)) return 'USD'
+    if (['USOIL', 'UKOIL'].includes(symbol)) return 'USD'
+    if (symbol.length === 6) return symbol.slice(3)
+    return 'USD'
+  }
+
+  getQuoteToUsdRate(quoteCurrency) {
+    if (quoteCurrency === 'USD') return 1
+
+    const quoteUsdPrice = infowayService.getPrice(`${quoteCurrency}USD`)
+    if (quoteUsdPrice && quoteUsdPrice.bid > 0) {
+      return quoteUsdPrice.bid
+    }
+
+    const usdQuotePrice = infowayService.getPrice(`USD${quoteCurrency}`)
+    if (usdQuotePrice && usdQuotePrice.bid > 0) {
+      return 1 / usdQuotePrice.bid
+    }
+
+    console.log(`[MARGIN_WARNING] No USD conversion rate found for ${quoteCurrency}, using 1`)
+    return 1
+  }
+
+  // Calculate margin required for a trade (result always in USD)
+  // Formula: (Lots * Contract Size * Price) / Leverage * quoteToUsdRate
+  calculateMargin(quantity, openPrice, leverage, contractSize = this.CONTRACT_SIZE, symbol = '') {
     // Parse leverage - handle formats: "1:100", "100", 100, "1:1", "1", 1
     let leverageNum = 100 // Default to 100
     if (leverage) {
@@ -87,8 +112,15 @@ class TradeEngine {
       leverageNum = 100
     }
     
-    const margin = (quantity * contractSize * openPrice) / leverageNum
-    return Math.round(margin * 100) / 100 // Round to 2 decimal places
+    let margin = (quantity * contractSize * openPrice) / leverageNum
+
+    if (symbol) {
+      const quoteCurrency = this.getQuoteCurrency(symbol)
+      const conversionRate = this.getQuoteToUsdRate(quoteCurrency)
+      margin = margin * conversionRate
+    }
+
+    return Math.round(margin * 100) / 100
   }
 
   // Calculate commission based on type
@@ -222,7 +254,7 @@ class TradeEngine {
     }
 
     // Calculate margin required for new trade
-    const marginRequired = this.calculateMargin(quantity, openPrice, leverage, contractSize)
+    const marginRequired = this.calculateMargin(quantity, openPrice, leverage, contractSize, symbol)
 
     // Calculate current used margin from existing trades
     const usedMargin = openTrades.reduce((sum, t) => sum + (t.marginUsed || 0), 0)
@@ -344,11 +376,14 @@ class TradeEngine {
       }
       // User can only use leverage up to account's max
       selectedLeverage = Math.min(userLeverageNum, accountMaxLeverage)
+      if (userLeverageNum > accountMaxLeverage) {
+        console.log(`[Trade] Leverage capped: user requested 1:${userLeverageNum}, account max is 1:${accountMaxLeverage}`)
+      }
     }
     
     const leverage = `1:${selectedLeverage}`
     
-    const marginRequired = this.calculateMargin(quantity, openPrice, leverage, contractSize)
+    const marginRequired = this.calculateMargin(quantity, openPrice, leverage, contractSize, symbol)
     
     // Log trade details
     console.log(`[Trade] ${quantity} lots ${symbol} @ ${openPrice}, Leverage: ${leverage}, Margin: $${marginRequired}`)

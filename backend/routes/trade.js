@@ -233,10 +233,28 @@ router.post('/open', async (req, res) => {
       }
     }
 
+    let leverageWarning = null
+    if (leverage) {
+      const reqLevStr = leverage.toString()
+      let requestedLev = 0
+      if (reqLevStr.includes(':')) {
+        requestedLev = parseInt(reqLevStr.split(':')[1]) || 0
+      } else {
+        requestedLev = parseInt(reqLevStr) || 0
+      }
+      const actualLev = trade.leverage || 100
+      if (requestedLev > 0 && actualLev < requestedLev) {
+        leverageWarning = `Leverage was capped from 1:${requestedLev} to 1:${actualLev} (account max)`
+      }
+    }
+
     res.json({
       success: true,
-      message: 'Trade opened successfully',
+      message: leverageWarning
+        ? `Trade opened successfully. Note: ${leverageWarning}`
+        : 'Trade opened successfully',
       trade,
+      leverageWarning,
       copyResults: copyResults.length > 0 ? copyResults : undefined
     })
   } catch (error) {
