@@ -379,30 +379,6 @@ router.post('/close', async (req, res) => {
       console.error('Error processing IB commission:', ibError)
     }
 
-    // Check if TRADE is A-Book (not user) and close on Corecen LP
-    // Only trades with bookType === 'A_BOOK' were pushed to Corecen
-    try {
-      if (result.trade.bookType === 'A_BOOK' || result.trade.bookType === 'A') {
-        const user = await User.findById(result.trade.userId)
-        console.log(`[A-BOOK CLOSE] ========================================`)
-        console.log(`[A-BOOK CLOSE] User: ${user?.email || 'Unknown'}`)
-        console.log(`[A-BOOK CLOSE] Trade ID (internal): ${result.trade._id}`)
-        console.log(`[A-BOOK CLOSE] Trade ID (tradeId): ${result.trade.tradeId}`)
-        console.log(`[A-BOOK CLOSE] Trade bookType: ${result.trade.bookType}`)
-        console.log(`[A-BOOK CLOSE] Close Price: ${result.trade.closePrice}`)
-        console.log(`[A-BOOK CLOSE] PnL: ${result.trade.pnl || result.realizedPnl}`)
-        console.log(`[A-BOOK CLOSE] ========================================`)
-        
-        lpService.closeTradeOnCorecen(result.trade).then(closeResult => {
-          console.log(`[A-BOOK CLOSE] Result:`, JSON.stringify(closeResult, null, 2))
-        }).catch(err => {
-          console.error('[A-BOOK CLOSE] FAILED:', err.message)
-        })
-      }
-    } catch (lpError) {
-      console.error('[Trade] Error checking A-Book status for close:', lpError)
-    }
-
     res.json({
       success: true,
       message: 'Trade closed successfully',
