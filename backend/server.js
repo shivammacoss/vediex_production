@@ -34,6 +34,7 @@ import employeeRoutes from './routes/employee.js'
 import employeeManagementRoutes from './routes/employeeManagement.js'
 import bookManagementRoutes from './routes/bookManagement.js'
 import lpRoutes from './routes/lp.js'
+import lpConnectionMonitor from './services/lpConnectionMonitor.js'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import copyTradingEngine from './services/copyTradingEngine.js'
@@ -256,9 +257,22 @@ app.get('/', (req, res) => {
   res.json({ message: 'Vediex API is running' })
 })
 
+// LP Connection Health Check
+app.get('/api/lp-health', async (req, res) => {
+  try {
+    const status = await lpConnectionMonitor.forceHealthCheck()
+    res.json({ success: true, lpConnection: status, timestamp: new Date().toISOString() })
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message, timestamp: new Date().toISOString() })
+  }
+})
+
 const PORT = process.env.PORT || 5000
 httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
+  
+  // Start LP connection monitor - pings Corecen every 30 seconds
+  lpConnectionMonitor.startMonitor()
   
   // Schedule daily commission calculation for copy trading
   cron.schedule('59 23 * * *', async () => {
