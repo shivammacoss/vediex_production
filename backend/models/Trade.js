@@ -171,6 +171,44 @@ const tradeSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     default: null
+  },
+  // LP Sync Tracking
+  lpPushed: {
+    type: Boolean,
+    default: false
+  },
+  lpPushedAt: {
+    type: Date,
+    default: null
+  },
+  lpSyncStatus: {
+    type: String,
+    enum: ['NONE', 'PENDING', 'SYNCED', 'FAILED', 'CLOSED_SYNCED', 'CLOSE_FAILED'],
+    default: 'NONE'
+  },
+  lpSyncError: {
+    type: String,
+    default: null
+  },
+  lpSyncAttempts: {
+    type: Number,
+    default: 0
+  },
+  lpSyncLastAttempt: {
+    type: Date,
+    default: null
+  },
+  lpClosePushed: {
+    type: Boolean,
+    default: false
+  },
+  lpClosePushedAt: {
+    type: Date,
+    default: null
+  },
+  lpCloseSyncError: {
+    type: String,
+    default: null
   }
 }, { timestamps: true })
 

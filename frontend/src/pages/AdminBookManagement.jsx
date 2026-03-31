@@ -16,7 +16,13 @@ import {
   Save,
   XCircle,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  AlertTriangle,
+  RotateCcw,
+  Activity,
+  Clock,
+  Send,
+  Filter
 } from 'lucide-react'
 import { API_URL } from '../config/api'
 
@@ -50,12 +56,30 @@ const AdminBookManagement = () => {
   const [lpAccountInfo, setLpAccountInfo] = useState(null)
   const [loadingLpAccount, setLoadingLpAccount] = useState(false)
 
+  // LP Sync Status
+  const [showSyncPanel, setShowSyncPanel] = useState(false)
+  const [syncTrades, setSyncTrades] = useState([])
+  const [syncStats, setSyncStats] = useState({ total: 0, synced: 0, failed: 0, pending: 0, notPushed: 0 })
+  const [syncLoading, setSyncLoading] = useState(false)
+  const [syncFilter, setSyncFilter] = useState('all')
+  const [syncPage, setSyncPage] = useState(1)
+  const [syncTotalPages, setSyncTotalPages] = useState(1)
+  const [retryingTrade, setRetryingTrade] = useState(null)
+  const [retryingAll, setRetryingAll] = useState(false)
+  const [pushingUnsent, setPushingUnsent] = useState(false)
+  const [syncMessage, setSyncMessage] = useState(null)
+
   useEffect(() => {
     fetchUsers()
     fetchLpSettings()
     checkLpConnectionStatus()
     fetchLpAccountInfo()
+    fetchSyncStatus()
   }, [filterBook])
+
+  useEffect(() => {
+    if (showSyncPanel) fetchSyncStatus()
+  }, [showSyncPanel, syncFilter, syncPage])
 
   // Check LP connection status on mount and periodically
   const checkLpConnectionStatus = async () => {
@@ -90,6 +114,70 @@ const AdminBookManagement = () => {
       setLpAccountInfo(null)
     }
     setLoadingLpAccount(false)
+  }
+
+  // Fetch LP Sync Status
+  const fetchSyncStatus = async () => {
+    setSyncLoading(true)
+    try {
+      const params = new URLSearchParams({ page: syncPage, limit: 50 })
+      if (syncFilter !== 'all') params.append('status', syncFilter)
+      const res = await fetch(`${API_URL}/book/lp-sync-status?${params}`)
+      const data = await res.json()
+      if (data.success) {
+        setSyncTrades(data.trades)
+        setSyncStats(data.stats)
+        setSyncTotalPages(data.totalPages)
+      }
+    } catch (error) {
+      console.error('Error fetching sync status:', error)
+    }
+    setSyncLoading(false)
+  }
+
+  // Retry single trade LP push
+  const handleRetryTrade = async (tradeId) => {
+    setRetryingTrade(tradeId)
+    setSyncMessage(null)
+    try {
+      const res = await fetch(`${API_URL}/book/lp-retry/${tradeId}`, { method: 'POST' })
+      const data = await res.json()
+      setSyncMessage({ type: data.success ? 'success' : 'error', text: data.message })
+      fetchSyncStatus()
+    } catch (error) {
+      setSyncMessage({ type: 'error', text: error.message })
+    }
+    setRetryingTrade(null)
+  }
+
+  // Retry all failed LP pushes
+  const handleRetryAll = async () => {
+    setRetryingAll(true)
+    setSyncMessage(null)
+    try {
+      const res = await fetch(`${API_URL}/book/lp-retry-all`, { method: 'POST' })
+      const data = await res.json()
+      setSyncMessage({ type: data.succeeded > 0 ? 'success' : 'error', text: data.message })
+      fetchSyncStatus()
+    } catch (error) {
+      setSyncMessage({ type: 'error', text: error.message })
+    }
+    setRetryingAll(false)
+  }
+
+  // Push all unsent A-Book trades
+  const handlePushUnsent = async () => {
+    setPushingUnsent(true)
+    setSyncMessage(null)
+    try {
+      const res = await fetch(`${API_URL}/book/lp-push-unsent`, { method: 'POST' })
+      const data = await res.json()
+      setSyncMessage({ type: data.succeeded > 0 ? 'success' : 'error', text: data.message })
+      fetchSyncStatus()
+    } catch (error) {
+      setSyncMessage({ type: 'error', text: error.message })
+    }
+    setPushingUnsent(false)
   }
 
   // Fetch LP settings on mount
@@ -324,19 +412,36 @@ const AdminBookManagement = () => {
       )}
 
       {/* Action Buttons */}
-      <div className="flex justify-between items-center mb-4">
-        <button
-          onClick={() => setShowLpSettings(!showLpSettings)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-            lpConnected 
-              ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border border-purple-500/30' 
-              : 'bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 border border-orange-500/30'
-          }`}
-        >
-          <Settings size={16} />
-          LP Connection Settings
-          {showLpSettings ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </button>
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setShowLpSettings(!showLpSettings)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              lpConnected 
+                ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border border-purple-500/30' 
+                : 'bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 border border-orange-500/30'
+            }`}
+          >
+            <Settings size={16} />
+            LP Connection Settings
+            {showLpSettings ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+          <button
+            onClick={() => { setShowSyncPanel(!showSyncPanel); if (!showSyncPanel) setShowLpSettings(false) }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              showSyncPanel
+                ? 'bg-cyan-500/30 text-cyan-400 border border-cyan-500/40'
+                : 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 border border-cyan-500/30'
+            }`}
+          >
+            <Activity size={16} />
+            LP Trade Sync
+            {syncStats.failed > 0 && (
+              <span className="bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[20px] text-center">{syncStats.failed}</span>
+            )}
+            {showSyncPanel ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+        </div>
         <button
           onClick={fetchUsers}
           className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
@@ -549,6 +654,198 @@ const AdminBookManagement = () => {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* LP Trade Sync Status Panel */}
+      {showSyncPanel && (
+        <div className="bg-dark-800 rounded-xl p-4 sm:p-6 border border-cyan-500/30 mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-cyan-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Activity size={20} className="text-cyan-500" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold">LP Trade Sync Status</h3>
+                <p className="text-gray-500 text-sm">Monitor A-Book trade pushes to Corecen LP</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+              <button onClick={handlePushUnsent} disabled={pushingUnsent}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 rounded-lg text-sm transition-colors disabled:opacity-50">
+                {pushingUnsent ? <RefreshCw size={14} className="animate-spin" /> : <Send size={14} />}
+                Push Unsent
+              </button>
+              <button onClick={handleRetryAll} disabled={retryingAll || syncStats.failed === 0}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 border border-orange-500/30 rounded-lg text-sm transition-colors disabled:opacity-50">
+                {retryingAll ? <RefreshCw size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                Retry All Failed
+              </button>
+              <button onClick={fetchSyncStatus} disabled={syncLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-dark-700 hover:bg-dark-600 text-gray-300 rounded-lg text-sm transition-colors disabled:opacity-50">
+                <RefreshCw size={14} className={syncLoading ? 'animate-spin' : ''} />
+              </button>
+            </div>
+          </div>
+
+          {syncMessage && (
+            <div className={`mb-4 p-3 rounded-lg flex items-center gap-2 text-sm ${syncMessage.type === 'success' ? 'bg-green-500/20 border border-green-500/30 text-green-400' : 'bg-red-500/20 border border-red-500/30 text-red-400'}`}>
+              {syncMessage.type === 'success' ? <CheckCircle size={16} /> : <XCircle size={16} />}
+              <span className="flex-1">{syncMessage.text}</span>
+              <button onClick={() => setSyncMessage(null)} className="text-gray-500 hover:text-gray-300"><XCircle size={14} /></button>
+            </div>
+          )}
+
+          {/* Sync Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 mb-5">
+            {[
+              { key: 'all', label: 'Total A-Book', value: syncStats.total, color: 'text-white' },
+              { key: 'SYNCED', label: 'Synced', value: syncStats.synced, color: 'text-green-400' },
+              { key: 'FAILED', label: 'Failed', value: syncStats.failed, color: 'text-red-400' },
+              { key: 'PENDING', label: 'Pending', value: syncStats.pending, color: 'text-yellow-400' },
+              { key: 'NONE', label: 'Not Pushed', value: syncStats.notPushed, color: 'text-gray-400' },
+            ].map(s => (
+              <button key={s.key} onClick={() => { setSyncFilter(s.key); setSyncPage(1) }}
+                className={`p-3 rounded-lg text-left transition-colors ${syncFilter === s.key ? 'bg-cyan-500/20 border border-cyan-500/40' : 'bg-dark-700 border border-transparent hover:border-gray-600'}`}>
+                <p className="text-gray-500 text-xs">{s.label}</p>
+                <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+              </button>
+            ))}
+          </div>
+
+          {/* Trades Table */}
+          {syncLoading ? (
+            <div className="text-center py-8 text-gray-500">Loading sync data...</div>
+          ) : syncTrades.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">No A-Book trades found</div>
+          ) : (
+            <>
+              {/* Mobile Card View */}
+              <div className="block lg:hidden space-y-3">
+                {syncTrades.map((trade) => (
+                  <div key={trade._id} className="bg-dark-700 rounded-xl p-4 border border-gray-700">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-white font-mono text-sm">{trade.tradeId}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        trade.lpSyncStatus === 'SYNCED' ? 'bg-green-500/20 text-green-400' :
+                        trade.lpSyncStatus === 'FAILED' ? 'bg-red-500/20 text-red-400' :
+                        trade.lpSyncStatus === 'PENDING' ? 'bg-yellow-500/20 text-yellow-400' :
+                        trade.lpSyncStatus === 'CLOSED_SYNCED' ? 'bg-blue-500/20 text-blue-400' :
+                        'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {trade.lpSyncStatus || 'NONE'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm mb-2">
+                      <div><span className="text-gray-500">User:</span> <span className="text-gray-300">{trade.userId?.email || 'N/A'}</span></div>
+                      <div><span className="text-gray-500">Symbol:</span> <span className="text-white">{trade.symbol}</span></div>
+                      <div><span className="text-gray-500">Side:</span> <span className={trade.side === 'BUY' ? 'text-green-400' : 'text-red-400'}>{trade.side}</span></div>
+                      <div><span className="text-gray-500">Vol:</span> <span className="text-white">{trade.quantity}</span></div>
+                      <div><span className="text-gray-500">Price:</span> <span className="text-white">{trade.openPrice}</span></div>
+                      <div><span className="text-gray-500">Attempts:</span> <span className="text-white">{trade.lpSyncAttempts || 0}</span></div>
+                    </div>
+                    {trade.lpSyncError && (
+                      <div className="mb-2 p-2 bg-red-500/10 rounded text-red-400 text-xs break-all">{trade.lpSyncError}</div>
+                    )}
+                    {(trade.lpSyncStatus === 'FAILED' || !trade.lpSyncStatus || trade.lpSyncStatus === 'NONE') && trade.status === 'OPEN' && (
+                      <button onClick={() => handleRetryTrade(trade._id)} disabled={retryingTrade === trade._id}
+                        className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 border border-orange-500/30 rounded-lg text-sm transition-colors disabled:opacity-50">
+                        {retryingTrade === trade._id ? <RefreshCw size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                        Retry Push
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-700">
+                      <th className="text-left text-gray-500 text-xs font-medium py-2 px-3">Trade ID</th>
+                      <th className="text-left text-gray-500 text-xs font-medium py-2 px-3">User</th>
+                      <th className="text-left text-gray-500 text-xs font-medium py-2 px-3">Symbol</th>
+                      <th className="text-left text-gray-500 text-xs font-medium py-2 px-3">Side</th>
+                      <th className="text-left text-gray-500 text-xs font-medium py-2 px-3">Volume</th>
+                      <th className="text-left text-gray-500 text-xs font-medium py-2 px-3">Price</th>
+                      <th className="text-left text-gray-500 text-xs font-medium py-2 px-3">Status</th>
+                      <th className="text-left text-gray-500 text-xs font-medium py-2 px-3">Sync Status</th>
+                      <th className="text-left text-gray-500 text-xs font-medium py-2 px-3">Error</th>
+                      <th className="text-left text-gray-500 text-xs font-medium py-2 px-3">Attempts</th>
+                      <th className="text-left text-gray-500 text-xs font-medium py-2 px-3">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {syncTrades.map((trade) => (
+                      <tr key={trade._id} className="border-b border-gray-800 hover:bg-dark-700/50">
+                        <td className="py-2.5 px-3 text-white font-mono text-xs">{trade.tradeId}</td>
+                        <td className="py-2.5 px-3">
+                          <div className="text-gray-300 text-xs">{trade.userId?.firstName || 'N/A'}</div>
+                          <div className="text-gray-500 text-xs">{trade.userId?.email || ''}</div>
+                        </td>
+                        <td className="py-2.5 px-3 text-white text-sm font-medium">{trade.symbol}</td>
+                        <td className="py-2.5 px-3">
+                          <span className={`text-xs font-medium ${trade.side === 'BUY' ? 'text-green-400' : 'text-red-400'}`}>{trade.side}</span>
+                        </td>
+                        <td className="py-2.5 px-3 text-white text-sm">{trade.quantity}</td>
+                        <td className="py-2.5 px-3 text-white text-sm">{trade.openPrice}</td>
+                        <td className="py-2.5 px-3">
+                          <span className={`px-2 py-0.5 rounded-full text-xs ${trade.status === 'OPEN' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                            {trade.status}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            trade.lpSyncStatus === 'SYNCED' ? 'bg-green-500/20 text-green-400' :
+                            trade.lpSyncStatus === 'FAILED' ? 'bg-red-500/20 text-red-400' :
+                            trade.lpSyncStatus === 'PENDING' ? 'bg-yellow-500/20 text-yellow-400' :
+                            trade.lpSyncStatus === 'CLOSED_SYNCED' ? 'bg-blue-500/20 text-blue-400' :
+                            trade.lpSyncStatus === 'CLOSE_FAILED' ? 'bg-red-500/20 text-red-400' :
+                            'bg-gray-500/20 text-gray-400'
+                          }`}>
+                            {trade.lpSyncStatus || 'NONE'}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3">
+                          {trade.lpSyncError ? (
+                            <span className="text-red-400 text-xs max-w-[200px] block truncate" title={trade.lpSyncError}>{trade.lpSyncError}</span>
+                          ) : (
+                            <span className="text-gray-600 text-xs">-</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-gray-400 text-sm">{trade.lpSyncAttempts || 0}</td>
+                        <td className="py-2.5 px-3">
+                          {(trade.lpSyncStatus === 'FAILED' || !trade.lpSyncStatus || trade.lpSyncStatus === 'NONE') && trade.status === 'OPEN' ? (
+                            <button onClick={() => handleRetryTrade(trade._id)} disabled={retryingTrade === trade._id}
+                              className="flex items-center gap-1 px-2 py-1 bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 border border-orange-500/30 rounded text-xs transition-colors disabled:opacity-50">
+                              {retryingTrade === trade._id ? <RefreshCw size={12} className="animate-spin" /> : <RotateCcw size={12} />}
+                              Retry
+                            </button>
+                          ) : (
+                            <span className="text-gray-600 text-xs">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              {syncTotalPages > 1 && (
+                <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-700">
+                  <p className="text-gray-500 text-sm">Page {syncPage} of {syncTotalPages}</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setSyncPage(p => Math.max(1, p - 1))} disabled={syncPage <= 1}
+                      className="px-3 py-1 bg-dark-700 hover:bg-dark-600 text-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed">Prev</button>
+                    <button onClick={() => setSyncPage(p => Math.min(syncTotalPages, p + 1))} disabled={syncPage >= syncTotalPages}
+                      className="px-3 py-1 bg-dark-700 hover:bg-dark-600 text-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 

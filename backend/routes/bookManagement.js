@@ -977,4 +977,207 @@ router.get('/lp/account', verifySuperAdmin, async (req, res) => {
   }
 })
 
+// GET /api/book/lp-sync-status - Get LP sync status for all A-Book trades
+router.get('/lp-sync-status', async (req, res) => {
+  try {
+    const { status, symbol, page = 1, limit = 50 } = req.query
+    const query = { bookType: 'A_BOOK' }
+    
+    if (status === 'FAILED') query.lpSyncStatus = 'FAILED'
+    else if (status === 'SYNCED') query.lpSyncStatus = 'SYNCED'
+    else if (status === 'PENDING') query.lpSyncStatus = 'PENDING'
+    else if (status === 'NONE') query.lpSyncStatus = { $in: ['NONE', null] }
+    
+    if (symbol) query.symbol = symbol
+
+    const skip = (parseInt(page) - 1) * parseInt(limit)
+    
+    const [trades, total] = await Promise.all([
+      Trade.find(query)
+        .populate('userId', 'firstName email bookType')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
+      Trade.countDocuments(query)
+    ])
+
+    // Get summary stats
+    const [syncedCount, failedCount, pendingCount, noneCount, totalABook] = await Promise.all([
+      Trade.countDocuments({ bookType: 'A_BOOK', lpSyncStatus: 'SYNCED' }),
+      Trade.countDocuments({ bookType: 'A_BOOK', lpSyncStatus: 'FAILED' }),
+      Trade.countDocuments({ bookType: 'A_BOOK', lpSyncStatus: 'PENDING' }),
+      Trade.countDocuments({ bookType: 'A_BOOK', lpSyncStatus: { $in: ['NONE', null] } }),
+      Trade.countDocuments({ bookType: 'A_BOOK' })
+    ])
+
+    res.json({
+      success: true,
+      trades,
+      total,
+      page: parseInt(page),
+      totalPages: Math.ceil(total / parseInt(limit)),
+      stats: {
+        total: totalABook,
+        synced: syncedCount,
+        failed: failedCount,
+        pending: pendingCount,
+        notPushed: noneCount
+      }
+    })
+  } catch (error) {
+    console.error('Error fetching LP sync status:', error)
+    res.status(500).json({ success: false, message: error.message })
+  }
+})
+
+// POST /api/book/lp-retry/:tradeId - Retry a failed LP push for a single trade
+router.post('/lp-retry/:tradeId', async (req, res) => {
+  try {
+    const trade = await Trade.findById(req.params.tradeId).populate('userId', 'firstName email bookType')
+    if (!trade) {
+      return res.status(404).json({ success: false, message: 'Trade not found' })
+    }
+
+    if (trade.bookType !== 'A_BOOK') {
+      return res.status(400).json({ success: false, message: 'Trade is not an A-Book trade' })
+    }
+
+    const user = await User.findById(trade.userId)
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' })
+    }
+
+    console.log(`[LP Retry] Retrying trade ${trade.tradeId} for user ${user.email}`)
+    
+    const result = await lpService.pushTradeToCorecen(trade, user, { retroactive: true })
+    
+    res.json({
+      success: result.success,
+      message: result.success 
+        ? `Trade ${trade.tradeId} pushed to Corecen successfully` 
+        : `Failed to push trade: ${result.error || result.message}`,
+      result
+    })
+  } catch (error) {
+    console.error('Error retrying LP push:', error)
+    res.status(500).json({ success: false, message: error.message })
+  }
+})
+
+// POST /api/book/lp-retry-all - Retry all failed LP pushes
+router.post('/lp-retry-all', async (req, res) => {
+  try {
+    const failedTrades = await Trade.find({ 
+      bookType: 'A_BOOK', 
+      lpSyncStatus: { $in: ['FAILED', 'NONE', null] },
+      status: 'OPEN'
+    }).populate('userId', 'firstName email bookType')
+
+    if (failedTrades.length === 0) {
+      return res.json({ success: true, message: 'No failed trades to retry', retried: 0, succeeded: 0, failed: 0 })
+    }
+
+    console.log(`[LP Retry All] Retrying ${failedTrades.length} failed/unsynced trades`)
+
+    let succeeded = 0
+    let failed = 0
+    const results = []
+
+    for (const trade of failedTrades) {
+      try {
+        const user = await User.findById(trade.userId)
+        if (!user) {
+          results.push({ tradeId: trade.tradeId, success: false, error: 'User not found' })
+          failed++
+          continue
+        }
+
+        const result = await lpService.pushTradeToCorecen(trade, user, { retroactive: true })
+        results.push({ tradeId: trade.tradeId, success: result.success, error: result.error })
+        
+        if (result.success) succeeded++
+        else failed++
+      } catch (err) {
+        results.push({ tradeId: trade.tradeId, success: false, error: err.message })
+        failed++
+      }
+    }
+
+    console.log(`[LP Retry All] Done: ${succeeded} succeeded, ${failed} failed out of ${failedTrades.length}`)
+
+    res.json({
+      success: true,
+      message: `Retried ${failedTrades.length} trades: ${succeeded} succeeded, ${failed} failed`,
+      retried: failedTrades.length,
+      succeeded,
+      failed,
+      results
+    })
+  } catch (error) {
+    console.error('Error retrying all LP pushes:', error)
+    res.status(500).json({ success: false, message: error.message })
+  }
+})
+
+// POST /api/book/lp-push-unsent - Push all A-Book open trades that were never sent
+router.post('/lp-push-unsent', async (req, res) => {
+  try {
+    // Find all A-Book users
+    const aBookUsers = await User.find({ bookType: 'A' }).lean()
+    const aBookUserIds = aBookUsers.map(u => u._id)
+
+    // Find open trades from A-Book users that were never pushed
+    const unsentTrades = await Trade.find({
+      userId: { $in: aBookUserIds },
+      status: 'OPEN',
+      $or: [
+        { lpSyncStatus: { $in: ['NONE', null] } },
+        { lpSyncStatus: { $exists: false } },
+        { bookType: { $ne: 'A_BOOK' } }
+      ]
+    })
+
+    if (unsentTrades.length === 0) {
+      return res.json({ success: true, message: 'No unsent trades found', pushed: 0 })
+    }
+
+    console.log(`[LP Push Unsent] Found ${unsentTrades.length} unsent trades from ${aBookUsers.length} A-Book users`)
+
+    let succeeded = 0
+    let failed = 0
+
+    for (const trade of unsentTrades) {
+      try {
+        // Mark as A_BOOK
+        if (trade.bookType !== 'A_BOOK') {
+          trade.bookType = 'A_BOOK'
+          await trade.save()
+        }
+
+        const user = aBookUsers.find(u => u._id.toString() === trade.userId.toString())
+        if (!user) continue
+
+        const result = await lpService.pushTradeToCorecen(trade, user, { retroactive: true })
+        if (result.success) succeeded++
+        else failed++
+      } catch (err) {
+        console.error(`[LP Push Unsent] Error pushing trade ${trade.tradeId}:`, err.message)
+        failed++
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Pushed ${succeeded} trades, ${failed} failed out of ${unsentTrades.length}`,
+      total: unsentTrades.length,
+      succeeded,
+      failed
+    })
+  } catch (error) {
+    console.error('Error pushing unsent trades:', error)
+    res.status(500).json({ success: false, message: error.message })
+  }
+})
+
 export default router

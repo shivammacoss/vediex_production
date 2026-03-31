@@ -9,6 +9,7 @@ import AdminLog from '../models/AdminLog.js'
 import tradeEngine from '../services/tradeEngine.js'
 import copyTradingEngine from '../services/copyTradingEngine.js'
 import MasterTrader from '../models/MasterTrader.js'
+import lpService from '../services/lpService.js'
 
 const router = express.Router()
 
@@ -303,6 +304,21 @@ router.post('/close/:tradeId', async (req, res) => {
       await account.save()
     }
 
+    // If A-Book trade, close on Corecen LP
+    if (trade.bookType === 'A_BOOK' || trade.bookType === 'A') {
+      try {
+        console.log(`[AdminTrade] A-Book trade closed, syncing to Corecen: ${trade.tradeId}`)
+        trade.rawPnl = rawPnl
+        lpService.closeTradeOnCorecen(trade).then(lpResult => {
+          console.log(`[AdminTrade] LP close result for ${trade.tradeId}:`, lpResult.success ? 'OK' : lpResult.error)
+        }).catch(err => {
+          console.error(`[AdminTrade] LP close error for ${trade.tradeId}:`, err.message)
+        })
+      } catch (lpError) {
+        console.error('[AdminTrade] Error in A-Book close sync:', lpError)
+      }
+    }
+
     // Check if this is a master trader's trade and close follower trades
     let followerResults = []
     const master = await MasterTrader.findOne({ tradingAccountId: trade.tradingAccountId, status: 'ACTIVE' })
@@ -403,6 +419,20 @@ router.post('/trades/close', async (req, res) => {
       'ADMIN',
       adminId
     )
+
+    // If A-Book trade, close on Corecen LP
+    if (result.trade && (result.trade.bookType === 'A_BOOK' || result.trade.bookType === 'A')) {
+      try {
+        console.log(`[AdminTrade] A-Book trade closed via trades/close, syncing to Corecen: ${result.trade.tradeId}`)
+        lpService.closeTradeOnCorecen(result.trade).then(lpResult => {
+          console.log(`[AdminTrade] LP close result: ${lpResult.success ? 'OK' : lpResult.error}`)
+        }).catch(err => {
+          console.error(`[AdminTrade] LP close error:`, err.message)
+        })
+      } catch (lpError) {
+        console.error('[AdminTrade] Error in A-Book close sync:', lpError)
+      }
+    }
 
     // Log the action
     await AdminLog.create({

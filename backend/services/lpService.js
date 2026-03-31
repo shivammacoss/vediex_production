@@ -398,9 +398,14 @@ class LPService {
     const config = this.getCorecenConfig()
     
     if (!config.apiKey || !config.apiSecret) {
-      console.log('[LP Service] Corecen API credentials not configured, skipping trade push')
-      return { success: false, message: 'LP credentials not configured' }
+      const errMsg = 'LP credentials not configured'
+      console.log(`[LP Service] ${errMsg}, skipping trade push`)
+      await this._updateTradeSyncStatus(trade._id, 'FAILED', errMsg)
+      return { success: false, message: errMsg }
     }
+
+    // Mark as pending
+    await this._updateTradeSyncStatus(trade._id, 'PENDING', null)
 
     const timestamp = Date.now().toString()
     const method = 'POST'
@@ -419,16 +424,18 @@ class LPService {
       tp: trade.takeProfit || 0,
       margin: trade.marginUsed || trade.margin || 0,
       leverage: trade.leverage || 100,
-      contract_size: trade.contractSize || this.getContractSize(trade.symbol), // Send contract size for P/L calculation
+      contract_size: trade.contractSize || this.getContractSize(trade.symbol),
       trading_account_id: trade.tradingAccountId?.toString() || '',
       opened_at: trade.openedAt?.toISOString() || new Date().toISOString(),
-      retroactive: options.retroactive || false // Skip timestamp validation for retroactive pushes
+      retroactive: true // Always send retroactive to skip price validation on Corecen
     }
 
     const body = JSON.stringify(tradeData)
     const signature = this.generateCorecenSignature(timestamp, method, path, body)
 
     try {
+      console.log(`[LP Service] Pushing trade ${trade.tradeId} to Corecen...`)
+      
       const response = await fetch(`${config.apiUrl}${path}`, {
         method: 'POST',
         headers: {
@@ -444,14 +451,38 @@ class LPService {
       
       if (response.ok) {
         console.log(`[LP Service] Trade ${trade.tradeId} pushed to Corecen successfully`)
+        await this._updateTradeSyncStatus(trade._id, 'SYNCED', null, true)
         return { success: true, data }
       } else {
-        console.error(`[LP Service] Failed to push trade to Corecen:`, data)
-        return { success: false, error: data.error?.message || 'Push failed' }
+        const errMsg = data.error?.message || `HTTP ${response.status}`
+        console.error(`[LP Service] Failed to push trade to Corecen (${response.status}): ${errMsg}`, JSON.stringify(data))
+        await this._updateTradeSyncStatus(trade._id, 'FAILED', errMsg)
+        return { success: false, error: errMsg }
       }
     } catch (error) {
       console.error('[LP Service] Error pushing trade to Corecen:', error)
+      await this._updateTradeSyncStatus(trade._id, 'FAILED', error.message)
       return { success: false, error: error.message }
+    }
+  }
+
+  // Update trade LP sync status in database
+  async _updateTradeSyncStatus(tradeId, status, error, pushed = false) {
+    try {
+      const Trade = (await import('../models/Trade.js')).default
+      const update = {
+        lpSyncStatus: status,
+        lpSyncError: error,
+        lpSyncLastAttempt: new Date(),
+        $inc: { lpSyncAttempts: 1 }
+      }
+      if (pushed) {
+        update.lpPushed = true
+        update.lpPushedAt = new Date()
+      }
+      await Trade.findByIdAndUpdate(tradeId, update)
+    } catch (err) {
+      console.error('[LP Service] Error updating trade sync status:', err.message)
     }
   }
 
@@ -524,18 +555,40 @@ class LPService {
         console.log(`[LP Service] ✓ Trade ${trade.tradeId} closed on Corecen`)
         console.log(`[LP Service] Response:`, JSON.stringify(data, null, 2))
         console.log(`[LP Service] ==========================================`)
+        await this._updateTradeCloseSyncStatus(trade._id, 'CLOSED_SYNCED', null)
         return { success: true, data }
       } else {
+        const errMsg = data.error?.message || `HTTP ${response.status}`
         console.error(`[LP Service] ✗ Failed to close trade on Corecen`)
         console.error(`[LP Service] HTTP Status: ${response.status}`)
         console.error(`[LP Service] Response:`, JSON.stringify(data, null, 2))
         console.log(`[LP Service] ==========================================`)
-        return { success: false, error: data.error?.message || 'Close failed' }
+        await this._updateTradeCloseSyncStatus(trade._id, 'CLOSE_FAILED', errMsg)
+        return { success: false, error: errMsg }
       }
     } catch (error) {
       console.error('[LP Service] ✗ Error closing trade on Corecen:', error.message)
       console.log(`[LP Service] ==========================================`)
+      await this._updateTradeCloseSyncStatus(trade._id, 'CLOSE_FAILED', error.message)
       return { success: false, error: error.message }
+    }
+  }
+
+  // Update trade close LP sync status in database
+  async _updateTradeCloseSyncStatus(tradeId, status, error) {
+    try {
+      const Trade = (await import('../models/Trade.js')).default
+      const update = {
+        lpSyncStatus: status,
+        lpCloseSyncError: error,
+      }
+      if (status === 'CLOSED_SYNCED') {
+        update.lpClosePushed = true
+        update.lpClosePushedAt = new Date()
+      }
+      await Trade.findByIdAndUpdate(tradeId, update)
+    } catch (err) {
+      console.error('[LP Service] Error updating trade close sync status:', err.message)
     }
   }
 

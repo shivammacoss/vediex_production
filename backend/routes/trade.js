@@ -387,6 +387,20 @@ router.post('/close', async (req, res) => {
       }
     }
 
+    // If A-Book trade, close on Corecen LP
+    if (result.trade && (result.trade.bookType === 'A_BOOK' || result.trade.bookType === 'A')) {
+      try {
+        console.log(`[A-BOOK CLOSE] Syncing close to Corecen for trade ${result.trade.tradeId}`)
+        lpService.closeTradeOnCorecen(result.trade).then(lpResult => {
+          console.log(`[A-BOOK CLOSE] Result:`, JSON.stringify(lpResult, null, 2))
+        }).catch(err => {
+          console.error('[A-BOOK CLOSE] FAILED:', err.message)
+        })
+      } catch (lpError) {
+        console.error('[Trade] Error in A-Book close sync:', lpError)
+      }
+    }
+
     // Process IB commission for the closed trade
     try {
       const ibResult = await ibEngine.processTradeCommission(result.trade)
