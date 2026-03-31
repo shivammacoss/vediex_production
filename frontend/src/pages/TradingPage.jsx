@@ -202,7 +202,7 @@ const TradingPage = () => {
         if (priceData && priceData.bid && priceData.bid > 0) {
           const bid = priceData.bid
           const ask = priceData.ask || priceData.bid
-          const spread = Math.abs(ask - bid) || (bid * 0.0001)
+          const spread = Math.abs(ask - bid)
           return { ...inst, bid, ask, spread }
         }
         return inst
@@ -215,7 +215,7 @@ const TradingPage = () => {
           ...prev,
           bid: selectedPrice.bid,
           ask: selectedPrice.ask || selectedPrice.bid,
-          spread: Math.abs((selectedPrice.ask || selectedPrice.bid) - selectedPrice.bid)
+          spread: Math.abs((selectedPrice.ask || selectedPrice.bid) - selectedPrice.bid) || 0
         }))
       }
     })
@@ -388,7 +388,7 @@ const TradingPage = () => {
             // Use bid for both if ask not provided, add small spread
             const bid = priceData.bid
             const ask = priceData.ask || priceData.bid
-            const spread = Math.abs(ask - bid) || (bid * 0.0001) // Default spread if same
+            const spread = Math.abs(ask - bid)
             return {
               ...inst,
               bid: bid,
@@ -409,7 +409,7 @@ const TradingPage = () => {
               ...prev,
               bid: bid,
               ask: ask,
-              spread: Math.abs(ask - bid) || (bid * 0.0001)
+              spread: Math.abs(ask - bid)
             }
           }
           return prev
@@ -425,7 +425,7 @@ const TradingPage = () => {
               ...tab,
               bid: bid,
               ask: ask,
-              spread: Math.abs(ask - bid) || (bid * 0.0001)
+              spread: Math.abs(ask - bid)
             }
           }
           return tab
