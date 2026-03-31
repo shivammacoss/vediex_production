@@ -1540,7 +1540,7 @@ const TradingPage = () => {
                           inst.symbol.includes('JPY') ? (inst.spread * 100).toFixed(1) :
                           inst.bid > 100 ? inst.spread.toFixed(2) :
                           (inst.spread * 10000).toFixed(1)
-                        ) : '-'}
+                        ) : '0'}
                       </div>
                       <div className="text-right w-14">
                         <div className="text-green-500 text-xs font-mono">
