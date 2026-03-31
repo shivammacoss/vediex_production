@@ -357,18 +357,8 @@ async function getDefaultSpread(symbol, segment) {
       return { value: charges.spreadValue, type: charges.spreadType }
     }
     
-    // Fallback default spreads if no charges configured
-    const fallbackSpreads = {
-      'Forex': { value: 1.5, type: 'FIXED' },      // 1.5 pips
-      'Metals': { value: 50, type: 'FIXED' },      // 50 cents
-      'Crypto': { value: 10, type: 'FIXED' },      // $10
-      'Energy': { value: 0.05, type: 'FIXED' },     // 5 cents
-      'Stocks': { value: 0.01, type: 'FIXED' }      // 1 cent
-    }
-    
-    const fallback = fallbackSpreads[segment] || { value: 0, type: 'FIXED' }
-    console.log(`[Infoway] Using fallback spread for ${symbol}: ${fallback.value} (${fallback.type})`)
-    return fallback
+    // No spread configured by admin = zero spread
+    return { value: 0, type: 'FIXED' }
   } catch (error) {
     console.error(`[Infoway] Error getting default spread for ${symbol}:`, error)
     return { value: 0, type: 'FIXED' }
