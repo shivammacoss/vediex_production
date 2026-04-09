@@ -41,6 +41,7 @@ import copyTradingEngine from './services/copyTradingEngine.js'
 import tradeEngine from './services/tradeEngine.js'
 import propTradingEngine from './services/propTradingEngine.js'
 import infowayService from './services/infowayService.js'
+import { startPeriodicFlush as startCandleFlush } from './services/candleAggregator.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -194,7 +195,10 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }))
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('Connected to MongoDB'))
+  .then(() => {
+    console.log('Connected to MongoDB')
+    startCandleFlush(5000)
+  })
   .catch((err) => console.error('MongoDB connection error:', err))
 
 // Routes

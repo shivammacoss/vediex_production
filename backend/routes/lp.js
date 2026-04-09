@@ -1,6 +1,7 @@
 import express from 'express'
 import { lpAuthMiddleware } from '../middleware/lpAuth.js'
 import infowayService from '../services/infowayService.js'
+import { processBidAsk } from '../services/candleAggregator.js'
 
 const router = express.Router()
 
@@ -36,6 +37,7 @@ router.post('/prices/batch', lpAuthMiddleware, (req, res) => {
           timestamp: tick.timestamp || timestamp || Date.now(),
           source: tick.source || 'CORECEN'
         })
+        processBidAsk(String(tick.symbol).toUpperCase(), tick.bid, tick.ask, tick.timestamp || timestamp || Date.now())
         updated++
       }
     }
@@ -76,6 +78,7 @@ router.post('/prices', lpAuthMiddleware, (req, res) => {
       timestamp: timestamp || Date.now(),
       source: source || 'CORECEN'
     })
+    processBidAsk(String(symbol).toUpperCase(), bid, ask, timestamp || Date.now())
 
     res.json({
       success: true,
